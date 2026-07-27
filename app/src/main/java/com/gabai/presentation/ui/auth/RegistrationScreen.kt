@@ -299,7 +299,15 @@ fun RegistrationScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Your information is safe and secure. GabAI complies with the Philippine Data Privacy Act and does not share your personal data with third parties.",
+                            // NOTE: don't restore a bare "GabAI complies with the Philippine Data
+                            // Privacy Act" claim here without an actual legal review backing it
+                            // (registered privacy policy, DPO, data-subject-rights process, etc.) --
+                            // asserting formal compliance we haven't substantiated is a real legal
+                            // risk for an app handling sensitive mental-health data, arguably worse
+                            // than not claiming it. This wording is deliberately more conservative.
+                            text = "Your information is kept confidential and is not shared with third parties. " +
+                                "A full privacy policy is in progress — for now, only verified GabAI " +
+                                "staff and doctor accounts can access patient conversations.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
