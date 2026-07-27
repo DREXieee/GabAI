@@ -50,7 +50,7 @@ val DarkOnPrimaryContainer = LightBlue
 val DarkSecondary = Color(0xFFA78BFA)
 val DarkOnSecondary = DarkBlue
 val DarkSecondaryContainer = Color(0xFF4C1D95)
-val DarkOnSecondaryContainer = Color(0xE9D5FF)
+val DarkOnSecondaryContainer = Color(0xFFE9D5FF)
 
 val DarkTertiary = Color(0xFF34D399)
 val DarkOnTertiary = Color(0xFF064E3B)

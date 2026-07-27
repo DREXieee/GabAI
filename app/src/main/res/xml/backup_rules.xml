@@ -6,8 +6,8 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <!-- Same reasoning as data_extraction_rules.xml (this file is the
+         pre-API-31 equivalent): don't let the plaintext auth session tokens
+         end up in a legacy full backup. -->
+    <exclude domain="file" path="datastore/auth_session.preferences_pb" />
 </full-backup-content>

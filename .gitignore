@@ -16,3 +16,7 @@
 .cxx
 .kotlin
 local.properties
+
+# JVM crash dumps from Gradle/Kotlin daemon crashes
+hs_err_pid*.log
+replay_pid*.log

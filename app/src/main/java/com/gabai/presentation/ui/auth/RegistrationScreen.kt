@@ -3,14 +3,24 @@ package com.gabai.presentation.ui.auth
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.gabai.data.local.repository.AuthSessionStore
+import com.gabai.data.remote.api.RetrofitClient
+import com.gabai.data.remote.models.RegisterRequest
 import com.gabai.presentation.theme.*
+import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 // Province data with corresponding cities
 data class ProvinceData(
@@ -33,174 +43,271 @@ private val provincesData = listOf(
 
 @Composable
 fun RegistrationScreen(
-    onRegistrationComplete: () -> Unit = {}
+    onRegistrationComplete: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
     var nickname by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var selectedProvinceIndex by remember { mutableStateOf(0) }
     var selectedCityIndex by remember { mutableStateOf(0) }
     var isProvinceDropdownExpanded by remember { mutableStateOf(false) }
     var isCityDropdownExpanded by remember { mutableStateOf(false) }
-    
+    var isSubmitting by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
     val selectedProvince = provincesData[selectedProvinceIndex]
     val selectedCity = selectedProvince.cities[selectedCityIndex]
-    
-    val isFormValid = nickname.isNotBlank() && selectedProvince.name.isNotBlank() && selectedCity.isNotBlank()
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Title
-        Text(
-            text = "Register",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        
-        Text(
-            text = "Fill in the information below",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Nickname Input
-        OutlinedTextField(
-            value = nickname,
-            onValueChange = { nickname = it },
-            label = { Text("Name or Nickname") },
-            placeholder = { Text("Enter your name") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                focusedLabelColor = MaterialTheme.colorScheme.primary
-            )
-        )
-        
-        // Province Dropdown
-        Box(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = selectedProvince.name,
-                onValueChange = {},
-                label = { Text("Province") },
-                readOnly = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { isProvinceDropdownExpanded = true },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary
-                )
-            )
-            
-            DropdownMenu(
-                expanded = isProvinceDropdownExpanded,
-                onDismissRequest = { isProvinceDropdownExpanded = false },
-                modifier = Modifier.fillMaxWidth(0.9f)
-            ) {
-                provincesData.forEachIndexed { index, province ->
-                    DropdownMenuItem(
-                        text = { Text(province.name) },
-                        onClick = {
-                            selectedProvinceIndex = index
-                            selectedCityIndex = 0 // Reset city when province changes
-                            isProvinceDropdownExpanded = false
-                        }
-                    )
-                }
-            }
-        }
-        
-        // City Dropdown
-        Box(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = selectedCity,
-                onValueChange = {},
-                label = { Text("City/Municipality") },
-                readOnly = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { isCityDropdownExpanded = true },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary
-                )
-            )
-            
-            DropdownMenu(
-                expanded = isCityDropdownExpanded,
-                onDismissRequest = { isCityDropdownExpanded = false },
-                modifier = Modifier.fillMaxWidth(0.9f)
-            ) {
-                selectedProvince.cities.forEachIndexed { index, city ->
-                    DropdownMenuItem(
-                        text = { Text(city) },
-                        onClick = {
-                            selectedCityIndex = index
-                            isCityDropdownExpanded = false
-                        }
-                    )
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Continue Button
-        Button(
-            onClick = onRegistrationComplete,
-            enabled = isFormValid,
+
+    val isFormValid = nickname.isNotBlank() && email.isNotBlank() && password.length >= 8 &&
+        selectedProvince.name.isNotBlank() && selectedCity.isNotBlank()
+    val windowWidthSize = rememberWindowWidthSize()
+
+    Scaffold(modifier = Modifier.fillMaxSize()) { paddingValues ->
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Text(
-                text = "Continue",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Privacy Note
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+                .fillMaxSize()
+                .screenContentPadding(paddingValues),
+            contentAlignment = Alignment.TopCenter
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = if (windowWidthSize == WindowWidthSize.COMPACT) Dp.Unspecified else Dimens.ReadingMaxWidth)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Dimens.SpaceM)
             ) {
+                Spacer(modifier = Modifier.height(Dimens.SpaceXL))
+
+                // Title
                 Text(
-                    text = "Privacy",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    text = "Register",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
+
                 Text(
-                    text = "Your information is safe and secure. GabAI complies with the Philippine Data Privacy Act and does not share your personal data with third parties.",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "Fill in the information below",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                Spacer(modifier = Modifier.height(Dimens.SpaceM))
+
+                // Nickname Input
+                OutlinedTextField(
+                    value = nickname,
+                    onValueChange = { nickname = it },
+                    label = { Text("Name or Nickname") },
+                    placeholder = { Text("Enter your name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+
+                // Email Input
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    placeholder = { Text("you@example.com") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+
+                // Password Input
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    placeholder = { Text("At least 8 characters") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+
+                // Province Dropdown
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = selectedProvince.name,
+                        onValueChange = {},
+                        label = { Text("Province") },
+                        readOnly = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isProvinceDropdownExpanded = true },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+
+                    DropdownMenu(
+                        expanded = isProvinceDropdownExpanded,
+                        onDismissRequest = { isProvinceDropdownExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        provincesData.forEachIndexed { index, province ->
+                            DropdownMenuItem(
+                                text = { Text(province.name) },
+                                onClick = {
+                                    selectedProvinceIndex = index
+                                    selectedCityIndex = 0 // Reset city when province changes
+                                    isProvinceDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // City Dropdown
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = selectedCity,
+                        onValueChange = {},
+                        label = { Text("City/Municipality") },
+                        readOnly = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isCityDropdownExpanded = true },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+
+                    DropdownMenu(
+                        expanded = isCityDropdownExpanded,
+                        onDismissRequest = { isCityDropdownExpanded = false },
+                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ) {
+                        selectedProvince.cities.forEachIndexed { index, city ->
+                            DropdownMenuItem(
+                                text = { Text(city) },
+                                onClick = {
+                                    selectedCityIndex = index
+                                    isCityDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(Dimens.SpaceM))
+
+                // Continue Button
+                Button(
+                    onClick = {
+                        errorMessage = null
+                        isSubmitting = true
+                        coroutineScope.launch {
+                            try {
+                                val response = RetrofitClient.getApiService(context).register(
+                                    RegisterRequest(
+                                        email = email.trim(),
+                                        password = password,
+                                        displayName = nickname.trim(),
+                                        province = selectedProvince.name,
+                                        city = selectedCity
+                                    )
+                                )
+                                AuthSessionStore(context).saveSession(response)
+                                onRegistrationComplete()
+                            } catch (e: HttpException) {
+                                errorMessage = if (e.code() == 400)
+                                    "That email may already be registered, or the password is too short."
+                                else
+                                    "Registration failed (${e.code()}). Please try again."
+                            } catch (e: Exception) {
+                                errorMessage = "Couldn't reach GabAI. Check your connection and try again."
+                            } finally {
+                                isSubmitting = false
+                            }
+                        }
+                    },
+                    enabled = isFormValid && !isSubmitting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Dimens.ButtonHeight),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(Dimens.SpaceM),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "Continue",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                TextButton(onClick = onNavigateToLogin) {
+                    Text("Already have an account? Log in")
+                }
+
+                Spacer(modifier = Modifier.height(Dimens.SpaceM))
+
+                // Privacy Note
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(Dimens.SpaceM),
+                        verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXS)
+                    ) {
+                        Text(
+                            text = "Privacy",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Your information is safe and secure. GabAI complies with the Philippine Data Privacy Act and does not share your personal data with third parties.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(Dimens.SpaceM))
             }
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }

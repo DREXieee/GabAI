@@ -1,10 +1,22 @@
 package com.gabai.presentation.ui.chatbot
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -16,11 +28,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.gabai.data.remote.api.BackendChatRepositoryImpl
+import com.gabai.data.remote.api.RetrofitClient
 import com.gabai.domain.model.ChatMessage
 import com.gabai.domain.model.CrisisLevel
 import com.gabai.presentation.navigation.Routes
+import com.gabai.presentation.theme.Dimens
+import com.gabai.presentation.theme.WindowWidthSize
+import com.gabai.presentation.theme.rememberWindowWidthSize
+import com.gabai.presentation.theme.screenContentPadding
 import com.gabai.presentation.ui.common.SafetyDisclaimerLine
 import com.gabai.presentation.ui.common.SafetyResourcesCard
 
@@ -28,12 +47,21 @@ import com.gabai.presentation.ui.common.SafetyResourcesCard
 @Composable
 fun ChatbotScreen(
     navController: NavController? = null,
-    viewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory())
+    viewModel: ChatViewModel = run {
+        val context = LocalContext.current
+        viewModel(
+            factory = ChatViewModelFactory(
+                BackendChatRepositoryImpl(RetrofitClient.getApiService(context))
+            )
+        )
+    }
 ) {
     var messageText by remember { mutableStateOf("") }
     val messages = viewModel.messages
     val crisisLevel by viewModel.crisisLevel.collectAsState()
     val isTyping by viewModel.isTyping.collectAsState()
+    val escalationId by viewModel.escalationId.collectAsState()
+    val sessionId by viewModel.sessionId.collectAsState()
     val listState = rememberLazyListState()
 
     // Auto-scroll to bottom when new messages arrive
@@ -71,7 +99,7 @@ fun ChatbotScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .screenContentPadding(paddingValues)
         ) {
             // Messages List
             LazyColumn(
@@ -79,31 +107,41 @@ fun ChatbotScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(vertical = Dimens.SpaceM),
+                verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXS)
             ) {
-                items(messages) { message ->
-                    ChatBubble(message = message)
-                }
-                if (isTyping) {
-                    item {
-                        Text(
-                            text = "GabAI is typing...",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                items(messages, key = { it.id }) { message ->
+                    ChatBubble(
+                        message = message,
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = tween(300),
+                            placementSpec = tween(300)
                         )
-                    }
+                    )
                 }
+            }
+
+            AnimatedVisibility(
+                visible = isTyping,
+                enter = fadeIn(tween(200)),
+                exit = fadeOut(tween(150))
+            ) {
+                TypingIndicator(modifier = Modifier.padding(horizontal = Dimens.SpaceXS))
             }
 
             // Emergency Warning - only escalates for the rest of this chat session,
             // never silently cleared by a later, calmer message.
-            if (crisisLevel != CrisisLevel.NONE) {
+            AnimatedVisibility(
+                visible = crisisLevel != CrisisLevel.NONE,
+                enter = fadeIn(tween(400, easing = FastOutSlowInEasing)) +
+                    expandVertically(tween(400, easing = FastOutSlowInEasing)),
+                exit = fadeOut(tween(250)) + shrinkVertically(tween(250))
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(vertical = Dimens.SpaceXS),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXS)
                 ) {
                     Card(
                         colors = CardDefaults.cardColors(
@@ -111,8 +149,8 @@ fun ChatbotScreen(
                         )
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.padding(Dimens.SpaceM),
+                            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXS)
                         ) {
                             Text(
                                 text = "⚠️ Emergency Support",
@@ -131,7 +169,7 @@ fun ChatbotScreen(
                             Button(
                                 onClick = {
                                     navController?.navigate(
-                                        Routes.escalationRoute(crisisLevel, viewModel.lastUserMessage())
+                                        Routes.escalationRoute(crisisLevel, escalationId, sessionId)
                                     )
                                 },
                                 modifier = Modifier.fillMaxWidth(),
@@ -154,8 +192,8 @@ fun ChatbotScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(vertical = Dimens.SpaceXS),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXS),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
@@ -164,7 +202,7 @@ fun ChatbotScreen(
                     placeholder = { Text("Type your message...") },
                     modifier = Modifier.weight(1f),
                     maxLines = 4,
-                    shape = RoundedCornerShape(24.dp),
+                    shape = MaterialTheme.shapes.extraLarge,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary
                     )
@@ -194,34 +232,40 @@ fun ChatbotScreen(
             SafetyDisclaimerLine(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .padding(vertical = Dimens.SpaceXXS)
             )
         }
     }
 }
 
 @Composable
-private fun ChatBubble(message: ChatMessage) {
+private fun ChatBubble(message: ChatMessage, modifier: Modifier = Modifier) {
+    val windowWidthSize = rememberWindowWidthSize()
+    val maxBubbleWidth = if (windowWidthSize == WindowWidthSize.COMPACT)
+        Dimens.ChatBubbleMaxWidthCompact
+    else
+        Dimens.ChatBubbleMaxWidthWide
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = if (message.isUser) Arrangement.End else Arrangement.Start
     ) {
         Box(
             modifier = Modifier
-                .widthIn(max = 280.dp)
+                .widthIn(max = maxBubbleWidth)
                 .background(
                     color = if (message.isUser)
                         MaterialTheme.colorScheme.primary
                     else
                         MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(
-                        topStart = if (message.isUser) 16.dp else 4.dp,
-                        topEnd = if (message.isUser) 4.dp else 16.dp,
-                        bottomStart = 16.dp,
-                        bottomEnd = 16.dp
+                        topStart = if (message.isUser) Dimens.SpaceM else Dimens.SpaceXXS,
+                        topEnd = if (message.isUser) Dimens.SpaceXXS else Dimens.SpaceM,
+                        bottomStart = Dimens.SpaceM,
+                        bottomEnd = Dimens.SpaceM
                     )
                 )
-                .padding(12.dp)
+                .padding(Dimens.SpaceS)
         ) {
             Text(
                 text = message.text,
@@ -230,6 +274,35 @@ private fun ChatBubble(message: ChatMessage) {
                 else
                     MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+@Composable
+private fun TypingIndicator(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "typingIndicator")
+    Row(
+        modifier = modifier.padding(vertical = Dimens.SpaceXXS),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXXS)
+    ) {
+        repeat(3) { index ->
+            val alpha by transition.animateFloat(
+                initialValue = 0.3f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(600, delayMillis = index * 150),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "typingDot$index"
+            )
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
+                        shape = CircleShape
+                    )
             )
         }
     }
