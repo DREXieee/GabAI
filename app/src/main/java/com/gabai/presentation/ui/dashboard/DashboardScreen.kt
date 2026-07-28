@@ -9,19 +9,23 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +39,8 @@ import androidx.navigation.NavController
 import com.gabai.domain.model.CrisisLevel
 import com.gabai.presentation.navigation.Routes
 import com.gabai.presentation.theme.Dimens
+import com.gabai.presentation.theme.GabAIShapes
+import com.gabai.presentation.theme.LocalGabAIAccents
 import com.gabai.presentation.theme.WindowWidthSize
 import com.gabai.presentation.theme.rememberWindowWidthSize
 import com.gabai.presentation.theme.screenContentPadding
@@ -45,6 +51,7 @@ fun DashboardScreen(
     navController: NavController? = null
 ) {
     val windowWidthSize = rememberWindowWidthSize()
+    val accents = LocalGabAIAccents.current
 
     Scaffold(modifier = Modifier.fillMaxSize()) { paddingValues ->
         Box(
@@ -71,7 +78,7 @@ fun DashboardScreen(
                         text = "Hello!",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "How can GabAI help you today?",
@@ -82,7 +89,6 @@ fun DashboardScreen(
 
                 Spacer(modifier = Modifier.height(Dimens.SpaceM))
 
-                // Quick Action Cards
                 Text(
                     text = "Quick Actions",
                     style = MaterialTheme.typography.titleLarge,
@@ -90,70 +96,63 @@ fun DashboardScreen(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                val quickActions = remember {
+                val quickActions = remember(accents) {
                     listOf(
                         QuickAction(
                             title = "Talk to GabAI",
-                            description = "Chat with AI chatbot for mental wellness support",
-                            icon = Icons.Default.Email,
-                            iconColorRole = QuickActionColorRole.PRIMARY
+                            description = "Chat for mental wellness support",
+                            icon = Icons.Filled.Forum,
+                            color = accents.green
                         ) { navController?.navigate(Routes.CHATBOT) },
                         QuickAction(
                             title = "Request Consultation",
-                            description = "Book an appointment with a mental health professional",
-                            icon = Icons.Default.Star,
-                            iconColorRole = QuickActionColorRole.TERTIARY
+                            description = "Book with a mental health professional",
+                            icon = Icons.Filled.MedicalServices,
+                            color = accents.indigo
                         ) { navController?.navigate(Routes.CONSULTATION) },
                         QuickAction(
                             title = "Daily Wellness",
-                            description = "Track your daily mood and wellness activities",
-                            icon = Icons.Default.Favorite,
-                            iconColorRole = QuickActionColorRole.SECONDARY
-                        ) { /* Navigate to wellness screen (to be implemented) */ },
+                            description = "Track your mood and wellness",
+                            icon = Icons.Filled.Spa,
+                            color = accents.pink
+                        ) { navController?.navigate(Routes.WELLNESS) },
                         QuickAction(
                             title = "History",
-                            description = "View your past sessions and records",
-                            icon = Icons.AutoMirrored.Filled.List,
-                            iconColorRole = QuickActionColorRole.PRIMARY_CONTAINER
-                        ) { /* Navigate to history screen (to be implemented) */ }
+                            description = "View your past sessions",
+                            icon = Icons.Filled.History,
+                            color = accents.amber
+                        ) { navController?.navigate(Routes.HISTORY) }
                     )
                 }
 
-                if (windowWidthSize == WindowWidthSize.EXPANDED) {
-                    quickActions.withIndex().toList().chunked(2).forEach { rowActions ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceM)
-                        ) {
-                            rowActions.forEach { (index, action) ->
-                                ActionCard(
-                                    title = action.title,
-                                    description = action.description,
-                                    icon = action.icon,
-                                    iconColor = action.iconColorRole.resolve(),
-                                    onClick = action.onClick,
-                                    index = index,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
+                val columns = 2
+
+                quickActions.withIndex().toList().chunked(columns).forEach { rowActions ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceM)
+                    ) {
+                        rowActions.forEach { (index, action) ->
+                            ActionCard(
+                                title = action.title,
+                                description = action.description,
+                                icon = action.icon,
+                                accentColor = action.color,
+                                onClick = action.onClick,
+                                index = index,
+                                modifier = Modifier.weight(1f)
+                            )
                         }
-                    }
-                } else {
-                    quickActions.forEachIndexed { index, action ->
-                        ActionCard(
-                            title = action.title,
-                            description = action.description,
-                            icon = action.icon,
-                            iconColor = action.iconColorRole.resolve(),
-                            onClick = action.onClick,
-                            index = index
-                        )
+                        if (rowActions.size < columns) {
+                            Spacer(modifier = Modifier.weight((columns - rowActions.size).toFloat()))
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(Dimens.SpaceM))
 
-                // Emergency Support Card
+                // Emergency Support Card -- deliberately stays on the dedicated crisis-red
+                // errorContainer, never folded into the decorative accent rotation above.
                 val emergencyInteractionSource = remember { MutableInteractionSource() }
                 val emergencyIsPressed by emergencyInteractionSource.collectIsPressedAsState()
                 val emergencyScale by animateFloatAsState(
@@ -171,6 +170,7 @@ fun DashboardScreen(
                         navController?.navigate(Routes.escalationRoute(CrisisLevel.NONE, escalationId = null, sessionId = null))
                     },
                     interactionSource = emergencyInteractionSource,
+                    shape = GabAIShapes.large,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer
                     )
@@ -217,28 +217,16 @@ private data class QuickAction(
     val title: String,
     val description: String,
     val icon: ImageVector,
-    val iconColorRole: QuickActionColorRole,
+    val color: Color,
     val onClick: () -> Unit
 )
-
-private enum class QuickActionColorRole {
-    PRIMARY, SECONDARY, TERTIARY, PRIMARY_CONTAINER;
-
-    @Composable
-    fun resolve(): Color = when (this) {
-        PRIMARY -> MaterialTheme.colorScheme.primary
-        SECONDARY -> MaterialTheme.colorScheme.secondary
-        TERTIARY -> MaterialTheme.colorScheme.tertiary
-        PRIMARY_CONTAINER -> MaterialTheme.colorScheme.primaryContainer
-    }
-}
 
 @Composable
 private fun ActionCard(
     title: String,
     description: String,
     icon: ImageVector,
-    iconColor: Color,
+    accentColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     index: Int = 0
@@ -263,66 +251,54 @@ private fun ActionCard(
             label = "actionCardScale"
         )
 
+        // Bold color-blocked card (accent as the full background, white text/icon)
+        // -- this is the "richer iconography instead of illustration" treatment:
+        // a large white icon badge stands in for the reference mockup's character art.
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(Dimens.ActionCardHeight)
+                .height(Dimens.ActionCardHeight + Dimens.SpaceL)
                 .scale(scale),
             onClick = onClick,
             interactionSource = interactionSource,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            shape = GabAIShapes.large,
+            colors = CardDefaults.cardColors(containerColor = accentColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(Dimens.SpaceM),
-                horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceM),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-            Card(
-                modifier = Modifier.size(Dimens.IconBadgeSize),
-                colors = CardDefaults.cardColors(
-                    containerColor = iconColor.copy(alpha = 0.1f)
-                )
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .size(Dimens.IconBadgeSize)
+                        .background(Color.White.copy(alpha = 0.22f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = title,
-                        tint = iconColor,
+                        tint = Color.White,
                         modifier = Modifier.size(Dimens.IconSizeM)
                     )
                 }
-            }
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXXS)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "Navigate",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXXS)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.85f),
+                        maxLines = 2
+                    )
+                }
             }
         }
     }

@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,6 +39,7 @@ import com.gabai.domain.repository.EscalationStatusUpdate
 import com.gabai.domain.repository.RemoteEscalationStatus
 import com.gabai.presentation.navigation.Routes
 import com.gabai.presentation.theme.Dimens
+import com.gabai.presentation.theme.GabAIShapes
 import com.gabai.presentation.theme.screenContentPadding
 import com.gabai.presentation.ui.common.SafetyResourcesCard
 
@@ -75,7 +77,15 @@ fun EscalationScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Request Human Support") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Request Human Support") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -165,6 +175,7 @@ private fun StatusCard(
 
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceM)) {
         Card(
+            shape = GabAIShapes.large,
             colors = CardDefaults.cardColors(
                 containerColor = if (isTerminal)
                     MaterialTheme.colorScheme.primaryContainer

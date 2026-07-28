@@ -1,5 +1,6 @@
 package com.gabai.presentation.theme
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
@@ -14,3 +15,8 @@ val GabAIShapes = Shapes(
     large = RoundedCornerShape(20.dp),
     extraLarge = RoundedCornerShape(28.dp)
 )
+
+// True pill/full-round shape for chips, tags, and pill buttons -- mirrors the
+// reference mockup's rounded filter chips. Not part of M3's Shapes scale (which
+// tops out at extraLarge's fixed 28dp corner), so exposed as a standalone token.
+val PillShape = CircleShape

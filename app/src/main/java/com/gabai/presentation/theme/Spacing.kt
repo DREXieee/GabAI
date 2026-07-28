@@ -29,6 +29,11 @@ object Dimens {
     val ChatBubbleMaxWidthWide = 420.dp
 
     val ReadingMaxWidth = 640.dp
+
+    val SendButtonSize = 48.dp
+    val TypingDotSize = 8.dp
+    val IconBadgeLargeSize = 64.dp
+    val AuthIconBadgeSize = 80.dp
 }
 
 /**

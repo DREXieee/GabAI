@@ -20,14 +20,23 @@ import com.gabai.presentation.ui.auth.RegistrationScreen
 import com.gabai.presentation.ui.call.CallScreen
 import com.gabai.presentation.ui.chatbot.ChatbotScreen
 import com.gabai.presentation.ui.common.PlaceholderScreen
+import com.gabai.presentation.ui.consultation.ConsultationBookingScreen
+import com.gabai.presentation.ui.consultation.ConsultationDetailScreen
+import com.gabai.presentation.ui.consultation.ConsultationListScreen
 import com.gabai.presentation.ui.dashboard.DashboardScreen
 import com.gabai.presentation.ui.escalation.EscalationScreen
+import com.gabai.presentation.ui.history.ChatTranscriptScreen
+import com.gabai.presentation.ui.history.HistoryScreen
+import com.gabai.presentation.ui.wellness.WellnessDetailScreen
+import com.gabai.presentation.ui.wellness.WellnessScreen
 
 private const val ARG_CRISIS_LEVEL = "crisisLevel"
 private const val ARG_ESCALATION_ID = "escalationId"
 private const val ARG_SESSION_ID = "sessionId"
 private const val ARG_ROOM_URL = "roomUrl"
 private const val ARG_TOKEN = "token"
+private const val ARG_WELLNESS_ITEM_ID = "itemId"
+private const val ARG_CONSULTATION_ID = "consultationId"
 
 // Navigation routes
 object Routes {
@@ -39,6 +48,12 @@ object Routes {
     const val CALL = "call"
     const val CONSULTATION = "consultation"
     const val SETTINGS = "settings"
+    const val WELLNESS = "wellness"
+    const val WELLNESS_DETAIL = "wellness_detail"
+    const val CONSULTATION_BOOKING = "consultation_booking"
+    const val CONSULTATION_DETAIL = "consultation_detail"
+    const val HISTORY = "history"
+    const val CHAT_TRANSCRIPT = "chat_transcript"
 
     // escalationId/sessionId are server-issued, so they must be optional query
     // params, not path segments -- LOCAL_KEYWORD/FALLBACK responses that never
@@ -47,6 +62,10 @@ object Routes {
         "$ESCALATION/{$ARG_CRISIS_LEVEL}?$ARG_ESCALATION_ID={$ARG_ESCALATION_ID}&$ARG_SESSION_ID={$ARG_SESSION_ID}"
 
     const val CALL_ROUTE = "$CALL?$ARG_ROOM_URL={$ARG_ROOM_URL}&$ARG_TOKEN={$ARG_TOKEN}"
+
+    const val WELLNESS_DETAIL_ROUTE = "$WELLNESS_DETAIL/{$ARG_WELLNESS_ITEM_ID}"
+    const val CONSULTATION_DETAIL_ROUTE = "$CONSULTATION_DETAIL/{$ARG_CONSULTATION_ID}"
+    const val CHAT_TRANSCRIPT_ROUTE = "$CHAT_TRANSCRIPT/{$ARG_SESSION_ID}"
 
     fun escalationRoute(crisisLevel: CrisisLevel, escalationId: String?, sessionId: String?): String {
         val base = "$ESCALATION/${crisisLevel.name}"
@@ -59,6 +78,12 @@ object Routes {
 
     fun callRoute(roomUrl: String, token: String): String =
         "$CALL?$ARG_ROOM_URL=${Uri.encode(roomUrl)}&$ARG_TOKEN=${Uri.encode(token)}"
+
+    fun wellnessDetailRoute(itemId: String): String = "$WELLNESS_DETAIL/${Uri.encode(itemId)}"
+
+    fun consultationDetailRoute(consultationId: String): String = "$CONSULTATION_DETAIL/${Uri.encode(consultationId)}"
+
+    fun chatTranscriptRoute(sessionId: String): String = "$CHAT_TRANSCRIPT/${Uri.encode(sessionId)}"
 }
 
 private val MotionEasing = FastOutSlowInEasing
@@ -164,14 +189,52 @@ fun GabAINavGraph(
             )
         }
 
-        // Consultation screen
+        // Consultation screens
         composable(Routes.CONSULTATION) {
-            PlaceholderScreen(title = "Consultation", navController = navController)
+            ConsultationListScreen(navController = navController)
+        }
+
+        composable(Routes.CONSULTATION_BOOKING) {
+            ConsultationBookingScreen(navController = navController)
+        }
+
+        composable(
+            route = Routes.CONSULTATION_DETAIL_ROUTE,
+            arguments = listOf(navArgument(ARG_CONSULTATION_ID) { type = NavType.StringType })
+        ) { backStackEntry ->
+            val consultationId = backStackEntry.arguments?.getString(ARG_CONSULTATION_ID).orEmpty()
+            ConsultationDetailScreen(consultationId = consultationId, navController = navController)
+        }
+
+        // History screens
+        composable(Routes.HISTORY) {
+            HistoryScreen(navController = navController)
+        }
+
+        composable(
+            route = Routes.CHAT_TRANSCRIPT_ROUTE,
+            arguments = listOf(navArgument(ARG_SESSION_ID) { type = NavType.StringType })
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getString(ARG_SESSION_ID).orEmpty()
+            ChatTranscriptScreen(sessionId = sessionId, navController = navController)
         }
 
         // Settings screen
         composable(Routes.SETTINGS) {
             PlaceholderScreen(title = "Settings", navController = navController)
+        }
+
+        // Daily Wellness screens
+        composable(Routes.WELLNESS) {
+            WellnessScreen(navController = navController)
+        }
+
+        composable(
+            route = Routes.WELLNESS_DETAIL_ROUTE,
+            arguments = listOf(navArgument(ARG_WELLNESS_ITEM_ID) { type = NavType.StringType })
+        ) { backStackEntry ->
+            val itemId = backStackEntry.arguments?.getString(ARG_WELLNESS_ITEM_ID).orEmpty()
+            WellnessDetailScreen(itemId = itemId, navController = navController)
         }
     }
 }

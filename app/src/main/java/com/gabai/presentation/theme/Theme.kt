@@ -8,7 +8,38 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+
+// M3's ColorScheme only exposes 3 general-purpose accent roles (primary/secondary/
+// tertiary), which isn't enough for the dashboard's 4-color category-card system
+// (inspired by the reference mockup's green/blue/pink/amber cards). This extended
+// palette is intentionally scoped to that one decorative use, not general UI chrome
+// -- everything else should keep using MaterialTheme.colorScheme as normal.
+data class GabAIAccentColors(
+    val green: Color,
+    val indigo: Color,
+    val pink: Color,
+    val amber: Color
+)
+
+private val LightAccents = GabAIAccentColors(
+    green = AccentGreen,
+    indigo = AccentIndigo,
+    pink = AccentPink,
+    amber = AccentAmber
+)
+
+private val DarkAccents = GabAIAccentColors(
+    green = DarkTertiary,
+    indigo = DarkSecondary,
+    pink = Color(0xFFF48CB0),
+    amber = DarkPrimary
+)
+
+val LocalGabAIAccents = staticCompositionLocalOf { LightAccents }
 
 private val DarkColorScheme = darkColorScheme(
     primary = DarkPrimary,
@@ -79,10 +110,14 @@ fun GabAITheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        shapes = GabAIShapes,
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalGabAIAccents provides if (darkTheme) DarkAccents else LightAccents
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = GabAIShapes,
+            content = content
+        )
+    }
 }

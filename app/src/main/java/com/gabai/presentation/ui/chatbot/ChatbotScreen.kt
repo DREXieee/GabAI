@@ -37,6 +37,7 @@ import com.gabai.domain.model.ChatMessage
 import com.gabai.domain.model.CrisisLevel
 import com.gabai.presentation.navigation.Routes
 import com.gabai.presentation.theme.Dimens
+import com.gabai.presentation.theme.PillShape
 import com.gabai.presentation.theme.WindowWidthSize
 import com.gabai.presentation.theme.rememberWindowWidthSize
 import com.gabai.presentation.theme.screenContentPadding
@@ -202,7 +203,7 @@ fun ChatbotScreen(
                     placeholder = { Text("Type your message...") },
                     modifier = Modifier.weight(1f),
                     maxLines = 4,
-                    shape = MaterialTheme.shapes.extraLarge,
+                    shape = PillShape,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary
                     )
@@ -216,13 +217,21 @@ fun ChatbotScreen(
                         }
                     },
                     enabled = messageText.isNotBlank(),
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier
+                        .size(Dimens.SendButtonSize)
+                        .background(
+                            color = if (messageText.isNotBlank())
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            shape = PillShape
+                        )
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send",
                         tint = if (messageText.isNotBlank())
-                            MaterialTheme.colorScheme.primary
+                            MaterialTheme.colorScheme.onPrimary
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -238,8 +247,9 @@ fun ChatbotScreen(
     }
 }
 
+// Not private -- reused read-only by ChatTranscriptScreen for History's chat tap-through.
 @Composable
-private fun ChatBubble(message: ChatMessage, modifier: Modifier = Modifier) {
+fun ChatBubble(message: ChatMessage, modifier: Modifier = Modifier) {
     val windowWidthSize = rememberWindowWidthSize()
     val maxBubbleWidth = if (windowWidthSize == WindowWidthSize.COMPACT)
         Dimens.ChatBubbleMaxWidthCompact
@@ -298,7 +308,7 @@ private fun TypingIndicator(modifier: Modifier = Modifier) {
             )
             Box(
                 modifier = Modifier
-                    .size(8.dp)
+                    .size(Dimens.TypingDotSize)
                     .background(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
                         shape = CircleShape

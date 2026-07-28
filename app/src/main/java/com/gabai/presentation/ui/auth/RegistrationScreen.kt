@@ -1,10 +1,14 @@
 package com.gabai.presentation.ui.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -83,12 +87,28 @@ fun RegistrationScreen(
             ) {
                 Spacer(modifier = Modifier.height(Dimens.SpaceXL))
 
+                Box(
+                    modifier = Modifier
+                        .size(Dimens.AuthIconBadgeSize)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(Dimens.IconSizeL)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(Dimens.SpaceS))
+
                 // Title
                 Text(
                     text = "Register",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
@@ -252,18 +272,20 @@ fun RegistrationScreen(
                         }
                     },
                     enabled = isFormValid && !isSubmitting,
+                    shape = PillShape,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(Dimens.ButtonHeight),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
+                        containerColor = Gold,
+                        contentColor = Ink,
                         disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 ) {
                     if (isSubmitting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(Dimens.SpaceM),
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = Ink,
                             strokeWidth = 2.dp
                         )
                     } else {
