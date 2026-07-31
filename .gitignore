@@ -20,3 +20,8 @@ local.properties
 # JVM crash dumps from Gradle/Kotlin daemon crashes
 hs_err_pid*.log
 replay_pid*.log
+
+# Local debug artifacts (may contain real auth/session data) -- never commit
+*.log
+supabaseauthlogs.txt
+request.txt
