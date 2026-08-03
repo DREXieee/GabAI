@@ -18,7 +18,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.gabai.data.local.repository.AuthSessionStore
-import com.gabai.presentation.navigation.Routes
 import com.gabai.presentation.theme.Dimens
 import com.gabai.presentation.theme.screenContentPadding
 import kotlinx.coroutines.launch
@@ -86,11 +85,11 @@ fun SettingsScreen(
 
             OutlinedButton(
                 onClick = {
+                    // Just clears the session -- GabAINavGraph reactively
+                    // watches for that and handles the redirect to Routes.AUTH
+                    // itself, the same way it now does for a forced logout.
                     coroutineScope.launch {
                         authStore.clearSession()
-                        navController?.navigate(Routes.AUTH) {
-                            popUpTo(0)
-                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(Dimens.ButtonHeight),

@@ -110,13 +110,15 @@ fun GabAINavGraph(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val authStore = remember { AuthSessionStore(context) }
+
     // NavHost needs a startDestination up front, so resolve it from the stored
     // session before composing the graph at all -- without this, every cold
     // start unconditionally rendered RegistrationScreen even with a perfectly
     // valid saved session, which looked exactly like an automatic logout.
     var startDestination by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        val hasSession = AuthSessionStore(context).session.first() != null
+        val hasSession = authStore.session.first() != null
         startDestination = if (hasSession) Routes.DASHBOARD else Routes.AUTH
     }
 
@@ -126,6 +128,29 @@ fun GabAINavGraph(
             CircularProgressIndicator()
         }
         return
+    }
+
+    // Reactively bounce back to the auth flow the moment the stored session
+    // disappears out from under an already-running app -- a force-invalidated
+    // session (e.g. another device resetting the password) or a failed silent
+    // refresh both end in RetrofitClient's authenticator calling
+    // clearSession(), but nothing was previously watching for that while the
+    // user was already past login, so the app just silently started failing
+    // API calls on whatever screen it was on. Centralized here rather than
+    // duplicated at each call site (including the manual "Log out" button,
+    // which now only needs to clear the session, not navigate itself).
+    LaunchedEffect(navController) {
+        var hasSeenSession = resolvedStartDestination == Routes.DASHBOARD
+        authStore.session.collect { session ->
+            if (session != null) {
+                hasSeenSession = true
+            } else if (hasSeenSession) {
+                hasSeenSession = false
+                navController.navigate(Routes.AUTH) {
+                    popUpTo(0)
+                }
+            }
+        }
     }
 
     NavHost(
