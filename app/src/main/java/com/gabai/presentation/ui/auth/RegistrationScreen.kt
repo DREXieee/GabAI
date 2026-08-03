@@ -2,13 +2,14 @@ package com.gabai.presentation.ui.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,34 +18,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.gabai.data.auth.GoogleAuthHelper
+import com.gabai.data.auth.GoogleSignInResult
 import com.gabai.data.local.repository.AuthSessionStore
+import com.gabai.data.remote.api.PSGC_NCR_REGION_CODE
+import com.gabai.data.remote.api.PsgcRetrofitClient
 import com.gabai.data.remote.api.RetrofitClient
+import com.gabai.data.remote.models.GoogleSignInRequest
 import com.gabai.data.remote.models.RegisterRequest
 import com.gabai.presentation.theme.*
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
-// Province data with corresponding cities
-data class ProvinceData(
+// Province option shown in the dropdown. "Metro Manila" is synthetic (NCR has
+// no province level in the PSGC hierarchy -- see PsgcApiService) so its cities
+// are fetched from the region endpoint instead of the province one.
+private data class ProvinceOption(
+    val code: String,
     val name: String,
-    val cities: List<String>
+    val isNcr: Boolean = false
 )
 
-private val provincesData = listOf(
-    ProvinceData("Metro Manila", listOf("Manila", "Quezon City", "Caloocan", "Las Piñas", "Makati", "Malabon", "Mandaluyong", "Marikina", "Muntinlupa", "Navotas", "Parañaque", "Pasay", "Pasig", "San Juan", "Taguig", "Valenzuela")),
-    ProvinceData("Cebu", listOf("Cebu City", "Mandaue", "Lapu-Lapu", "Talisay", "Toledo", "Naga", "Carcar", "Danao", "Bogo")),
-    ProvinceData("Davao", listOf("Davao City", "Tagum", "Panabo", "Digos", "Mati", "Samal")),
-    ProvinceData("Iloilo", listOf("Iloilo City", "Passi", "Pototan", "Guimbal", "Miagao", "Oton")),
-    ProvinceData("Baguio", listOf("Baguio City")),
-    ProvinceData("Bulacan", listOf("Malolos", "Meycauayan", "Marilao", "Santa Maria", "Baliuag", "San Jose del Monte", "Pulilan")),
-    ProvinceData("Pampanga", listOf("Angeles City", "San Fernando", "Mabalacat", "Guagua", "Lubao", "Mexico")),
-    ProvinceData("Laguna", listOf("Santa Rosa", "Biñan", "San Pedro", "Calamba", "Los Baños", "Cabuyao", "San Pablo")),
-    ProvinceData("Cavite", listOf("Dasmariñas", "Bacoor", "Imus", "General Trias", "Tagaytay", "Cavite City", "Trece Martires")),
-    ProvinceData("Rizal", listOf("Antipolo", "Cainta", "Taytay", "Angono", "Binangonan", "San Mateo", "Morong"))
-)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegistrationScreen(
     onRegistrationComplete: () -> Unit = {},
@@ -56,18 +54,85 @@ fun RegistrationScreen(
     var nickname by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var selectedProvinceIndex by remember { mutableStateOf(0) }
-    var selectedCityIndex by remember { mutableStateOf(0) }
-    var isProvinceDropdownExpanded by remember { mutableStateOf(false) }
-    var isCityDropdownExpanded by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isGoogleSigningIn by remember { mutableStateOf(false) }
+    var googleErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    val selectedProvince = provincesData[selectedProvinceIndex]
-    val selectedCity = selectedProvince.cities[selectedCityIndex]
+    fun handleGoogleSignIn() {
+        googleErrorMessage = null
+        isGoogleSigningIn = true
+        coroutineScope.launch {
+            when (val result = GoogleAuthHelper.signIn(context)) {
+                is GoogleSignInResult.Success -> {
+                    try {
+                        val response = RetrofitClient.getApiService(context)
+                            .googleSignIn(GoogleSignInRequest(result.idToken))
+                        AuthSessionStore(context).saveSession(response)
+                        onRegistrationComplete()
+                    } catch (e: Exception) {
+                        googleErrorMessage = "Couldn't sign in with Google. Please try again."
+                    }
+                }
+                is GoogleSignInResult.Cancelled -> Unit
+                is GoogleSignInResult.NotConfigured ->
+                    googleErrorMessage = "Google sign-in isn't set up for this build yet."
+                is GoogleSignInResult.Failure -> googleErrorMessage = result.message
+            }
+            isGoogleSigningIn = false
+        }
+    }
+
+    var provinces by remember { mutableStateOf<List<ProvinceOption>>(emptyList()) }
+    var isLoadingProvinces by remember { mutableStateOf(true) }
+    var provincesLoadFailed by remember { mutableStateOf(false) }
+    var selectedProvince by remember { mutableStateOf<ProvinceOption?>(null) }
+    var isProvinceDropdownExpanded by remember { mutableStateOf(false) }
+
+    var cities by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isLoadingCities by remember { mutableStateOf(false) }
+    var citiesLoadFailed by remember { mutableStateOf(false) }
+    var selectedCity by remember { mutableStateOf<String?>(null) }
+    var isCityDropdownExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val fetched = PsgcRetrofitClient.service.getProvinces()
+                .map { ProvinceOption(code = it.code, name = it.name) }
+                .sortedBy { it.name }
+            provinces = listOf(ProvinceOption(code = PSGC_NCR_REGION_CODE, name = "Metro Manila", isNcr = true)) + fetched
+            provincesLoadFailed = false
+        } catch (e: Exception) {
+            provincesLoadFailed = true
+        } finally {
+            isLoadingProvinces = false
+        }
+    }
+
+    LaunchedEffect(selectedProvince) {
+        val province = selectedProvince
+        selectedCity = null
+        cities = emptyList()
+        if (province == null) return@LaunchedEffect
+        isLoadingCities = true
+        citiesLoadFailed = false
+        try {
+            val fetched = if (province.isNcr) {
+                PsgcRetrofitClient.service.getCitiesForRegion(province.code)
+            } else {
+                PsgcRetrofitClient.service.getCitiesForProvince(province.code)
+            }
+            cities = fetched.map { it.name }.sorted()
+        } catch (e: Exception) {
+            citiesLoadFailed = true
+        } finally {
+            isLoadingCities = false
+        }
+    }
 
     val isFormValid = nickname.isNotBlank() && email.isNotBlank() && password.length >= 8 &&
-        selectedProvince.name.isNotBlank() && selectedCity.isNotBlank()
+        selectedProvince != null && !selectedCity.isNullOrBlank()
     val windowWidthSize = rememberWindowWidthSize()
 
     Scaffold(modifier = Modifier.fillMaxSize()) { paddingValues ->
@@ -156,8 +221,16 @@ fun RegistrationScreen(
                     placeholder = { Text("At least 8 characters") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                            )
+                        }
+                    },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         focusedLabelColor = MaterialTheme.colorScheme.primary
@@ -165,70 +238,117 @@ fun RegistrationScreen(
                 )
 
                 // Province Dropdown
-                Box(modifier = Modifier.fillMaxWidth()) {
+                ExposedDropdownMenuBox(
+                    expanded = isProvinceDropdownExpanded,
+                    onExpandedChange = { isProvinceDropdownExpanded = it }
+                ) {
                     OutlinedTextField(
-                        value = selectedProvince.name,
+                        value = selectedProvince?.name ?: if (isLoadingProvinces) "Loading provinces..." else "",
                         onValueChange = {},
                         label = { Text("Province") },
+                        placeholder = { if (provincesLoadFailed) Text("Couldn't load — tap to retry") },
                         readOnly = true,
+                        enabled = !isLoadingProvinces,
+                        trailingIcon = {
+                            if (isLoadingProvinces) {
+                                CircularProgressIndicator(modifier = Modifier.size(Dimens.SpaceM), strokeWidth = 2.dp)
+                            } else {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = isProvinceDropdownExpanded)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { isProvinceDropdownExpanded = true },
+                            .menuAnchor(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             focusedLabelColor = MaterialTheme.colorScheme.primary
                         )
                     )
 
-                    DropdownMenu(
+                    ExposedDropdownMenu(
                         expanded = isProvinceDropdownExpanded,
-                        onDismissRequest = { isProvinceDropdownExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
+                        onDismissRequest = { isProvinceDropdownExpanded = false }
                     ) {
-                        provincesData.forEachIndexed { index, province ->
+                        provinces.forEach { province ->
                             DropdownMenuItem(
                                 text = { Text(province.name) },
                                 onClick = {
-                                    selectedProvinceIndex = index
-                                    selectedCityIndex = 0 // Reset city when province changes
+                                    selectedProvince = province
                                     isProvinceDropdownExpanded = false
                                 }
                             )
                         }
                     }
                 }
+                if (provincesLoadFailed) {
+                    TextButton(onClick = {
+                        coroutineScope.launch {
+                            isLoadingProvinces = true
+                            try {
+                                val fetched = PsgcRetrofitClient.service.getProvinces()
+                                    .map { ProvinceOption(code = it.code, name = it.name) }
+                                    .sortedBy { it.name }
+                                provinces = listOf(ProvinceOption(code = PSGC_NCR_REGION_CODE, name = "Metro Manila", isNcr = true)) + fetched
+                                provincesLoadFailed = false
+                            } catch (e: Exception) {
+                                provincesLoadFailed = true
+                            } finally {
+                                isLoadingProvinces = false
+                            }
+                        }
+                    }) {
+                        Text("Couldn't load provinces. Tap to retry.")
+                    }
+                }
 
                 // City Dropdown
-                Box(modifier = Modifier.fillMaxWidth()) {
+                ExposedDropdownMenuBox(
+                    expanded = isCityDropdownExpanded && cities.isNotEmpty(),
+                    onExpandedChange = { if (cities.isNotEmpty()) isCityDropdownExpanded = it }
+                ) {
                     OutlinedTextField(
-                        value = selectedCity,
+                        value = selectedCity ?: if (isLoadingCities) "Loading cities..." else "",
                         onValueChange = {},
                         label = { Text("City/Municipality") },
                         readOnly = true,
+                        enabled = selectedProvince != null && !isLoadingCities,
+                        trailingIcon = {
+                            if (isLoadingCities) {
+                                CircularProgressIndicator(modifier = Modifier.size(Dimens.SpaceM), strokeWidth = 2.dp)
+                            } else {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCityDropdownExpanded)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { isCityDropdownExpanded = true },
+                            .menuAnchor(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             focusedLabelColor = MaterialTheme.colorScheme.primary
                         )
                     )
 
-                    DropdownMenu(
-                        expanded = isCityDropdownExpanded,
-                        onDismissRequest = { isCityDropdownExpanded = false },
-                        modifier = Modifier.fillMaxWidth(0.9f)
+                    ExposedDropdownMenu(
+                        expanded = isCityDropdownExpanded && cities.isNotEmpty(),
+                        onDismissRequest = { isCityDropdownExpanded = false }
                     ) {
-                        selectedProvince.cities.forEachIndexed { index, city ->
+                        cities.forEach { city ->
                             DropdownMenuItem(
                                 text = { Text(city) },
                                 onClick = {
-                                    selectedCityIndex = index
+                                    selectedCity = city
                                     isCityDropdownExpanded = false
                                 }
                             )
                         }
                     }
+                }
+                if (citiesLoadFailed) {
+                    Text(
+                        text = "Couldn't load cities for this province. Try selecting it again.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
 
                 if (errorMessage != null) {
@@ -253,7 +373,7 @@ fun RegistrationScreen(
                                         email = email.trim(),
                                         password = password,
                                         displayName = nickname.trim(),
-                                        province = selectedProvince.name,
+                                        province = selectedProvince?.name,
                                         city = selectedCity
                                     )
                                 )
@@ -295,6 +415,43 @@ fun RegistrationScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "or",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = Dimens.SpaceS)
+                    )
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                }
+
+                OutlinedButton(
+                    onClick = { handleGoogleSignIn() },
+                    enabled = !isGoogleSigningIn,
+                    shape = PillShape,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Dimens.ButtonHeight)
+                ) {
+                    if (isGoogleSigningIn) {
+                        CircularProgressIndicator(modifier = Modifier.size(Dimens.SpaceM), strokeWidth = 2.dp)
+                    } else {
+                        Text("Continue with Google")
+                    }
+                }
+
+                if (googleErrorMessage != null) {
+                    Text(
+                        text = googleErrorMessage.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
 
                 TextButton(onClick = onNavigateToLogin) {

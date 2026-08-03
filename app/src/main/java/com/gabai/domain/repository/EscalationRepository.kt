@@ -1,5 +1,6 @@
 package com.gabai.domain.repository
 
+import com.gabai.domain.model.Clinic
 import com.gabai.domain.model.CrisisLevel
 import kotlinx.coroutines.flow.Flow
 
@@ -11,7 +12,8 @@ data class EscalationStatusUpdate(
     val crisisLevel: CrisisLevel,
     val claimedByStaffName: String?,
     val dailyRoomUrl: String? = null,
-    val patientMeetingToken: String? = null
+    val patientMeetingToken: String? = null,
+    val transferredDoctorClinic: Clinic? = null
 )
 
 interface EscalationRepository {

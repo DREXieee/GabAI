@@ -14,5 +14,6 @@ data class EscalationStatusDto(
     val claimedAt: String?,
     val resolvedAt: String?,
     val dailyRoomUrl: String? = null,
-    val patientMeetingToken: String? = null
+    val patientMeetingToken: String? = null,
+    val transferredDoctorClinic: ClinicDto? = null
 )

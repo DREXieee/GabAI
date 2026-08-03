@@ -34,7 +34,8 @@ class RemoteEscalationRepositoryImpl(private val apiService: ApiService) : Escal
                     crisisLevel = crisisLevel,
                     claimedByStaffName = response.claimedByStaffName,
                     dailyRoomUrl = response.dailyRoomUrl,
-                    patientMeetingToken = response.patientMeetingToken
+                    patientMeetingToken = response.patientMeetingToken,
+                    transferredDoctorClinic = response.transferredDoctorClinic?.toDomain()
                 )
             )
 

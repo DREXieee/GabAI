@@ -6,11 +6,15 @@ import com.gabai.data.remote.models.CancelConsultationRequest
 import com.gabai.data.remote.models.ChatMessageRequest
 import com.gabai.data.remote.models.ChatMessageResponse
 import com.gabai.data.remote.models.ChatSessionDetailDto
+import com.gabai.data.remote.models.ClinicsResponse
 import com.gabai.data.remote.models.ConsultationDto
 import com.gabai.data.remote.models.ConsultationStatusDto
 import com.gabai.data.remote.models.ConsultationsResponse
 import com.gabai.data.remote.models.CreateEscalationRequest
 import com.gabai.data.remote.models.EscalationStatusDto
+import com.gabai.data.remote.models.ForgotPasswordRequest
+import com.gabai.data.remote.models.ForgotPasswordResponse
+import com.gabai.data.remote.models.GoogleSignInRequest
 import com.gabai.data.remote.models.HistoryResponseDto
 import com.gabai.data.remote.models.LoginRequest
 import com.gabai.data.remote.models.OpenSlotsResponse
@@ -32,6 +36,12 @@ interface ApiService {
 
     @POST("api/auth/refresh")
     suspend fun refresh(@Body request: RefreshRequest): AuthResponse
+
+    @POST("api/auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): ForgotPasswordResponse
+
+    @POST("api/auth/google")
+    suspend fun googleSignIn(@Body request: GoogleSignInRequest): AuthResponse
 
     @POST("api/chat/message")
     suspend fun sendChatMessage(@Body request: ChatMessageRequest): ChatMessageResponse
@@ -65,4 +75,7 @@ interface ApiService {
 
     @GET("api/history")
     suspend fun getHistory(@Query("cursor") cursor: String? = null, @Query("limit") limit: Int? = null): HistoryResponseDto
+
+    @GET("api/clinics")
+    suspend fun getClinics(): ClinicsResponse
 }

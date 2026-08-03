@@ -12,13 +12,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.gabai.domain.model.Clinic
 import com.gabai.domain.model.CrisisLevel
 import com.gabai.domain.repository.EscalationStatusUpdate
 import com.gabai.domain.repository.RemoteEscalationStatus
@@ -41,6 +46,8 @@ import com.gabai.presentation.navigation.Routes
 import com.gabai.presentation.theme.Dimens
 import com.gabai.presentation.theme.GabAIShapes
 import com.gabai.presentation.theme.screenContentPadding
+import com.gabai.presentation.ui.clinics.ClinicMap
+import com.gabai.presentation.ui.clinics.clinicDirectionsIntent
 import com.gabai.presentation.ui.common.SafetyResourcesCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -202,6 +209,10 @@ private fun StatusCard(
             }
         }
 
+        if (status.status == RemoteEscalationStatus.TRANSFERRED && status.transferredDoctorClinic != null) {
+            TransferredClinicCard(clinic = status.transferredDoctorClinic)
+        }
+
         if (waitTimedOut && status.status == RemoteEscalationStatus.PENDING) {
             Text(
                 text = "We're taking longer than usual to reach a staff member. Please use the " +
@@ -214,6 +225,46 @@ private fun StatusCard(
         if (isTerminal) {
             Button(onClick = onReturnToDashboard, modifier = Modifier.fillMaxWidth()) {
                 Text("Return to Dashboard")
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransferredClinicCard(clinic: Clinic) {
+    val context = LocalContext.current
+
+    Card(shape = GabAIShapes.large) {
+        Column(
+            modifier = Modifier.padding(Dimens.SpaceM),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceS)
+        ) {
+            Text(
+                text = clinic.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = clinic.address,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+                shape = GabAIShapes.medium
+            ) {
+                ClinicMap(clinics = listOf(clinic), userLocation = null, modifier = Modifier.fillMaxSize())
+            }
+
+            Button(
+                onClick = { context.startActivity(clinicDirectionsIntent(clinic)) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null)
+                Text(" Get Directions", modifier = Modifier.padding(start = Dimens.SpaceXXS))
             }
         }
     }

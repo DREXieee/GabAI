@@ -7,19 +7,32 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.gabai.data.local.repository.AuthSessionStore
 import com.gabai.domain.model.CrisisLevel
+import com.gabai.presentation.ui.auth.ForgotPasswordScreen
 import com.gabai.presentation.ui.auth.LoginScreen
 import com.gabai.presentation.ui.auth.RegistrationScreen
+import kotlinx.coroutines.flow.first
 import com.gabai.presentation.ui.call.CallScreen
 import com.gabai.presentation.ui.chatbot.ChatbotScreen
-import com.gabai.presentation.ui.common.PlaceholderScreen
+import com.gabai.presentation.ui.clinics.NearestClinicsScreen
 import com.gabai.presentation.ui.consultation.ConsultationBookingScreen
 import com.gabai.presentation.ui.consultation.ConsultationDetailScreen
 import com.gabai.presentation.ui.consultation.ConsultationListScreen
@@ -27,6 +40,7 @@ import com.gabai.presentation.ui.dashboard.DashboardScreen
 import com.gabai.presentation.ui.escalation.EscalationScreen
 import com.gabai.presentation.ui.history.ChatTranscriptScreen
 import com.gabai.presentation.ui.history.HistoryScreen
+import com.gabai.presentation.ui.settings.SettingsScreen
 import com.gabai.presentation.ui.wellness.WellnessDetailScreen
 import com.gabai.presentation.ui.wellness.WellnessScreen
 
@@ -42,6 +56,7 @@ private const val ARG_CONSULTATION_ID = "consultationId"
 object Routes {
     const val AUTH = "auth"
     const val LOGIN = "login"
+    const val FORGOT_PASSWORD = "forgot_password"
     const val DASHBOARD = "dashboard"
     const val CHATBOT = "chatbot"
     const val ESCALATION = "escalation"
@@ -54,6 +69,7 @@ object Routes {
     const val CONSULTATION_DETAIL = "consultation_detail"
     const val HISTORY = "history"
     const val CHAT_TRANSCRIPT = "chat_transcript"
+    const val NEAREST_CLINICS = "nearest_clinics"
 
     // escalationId/sessionId are server-issued, so they must be optional query
     // params, not path segments -- LOCAL_KEYWORD/FALLBACK responses that never
@@ -93,9 +109,28 @@ fun GabAINavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    // NavHost needs a startDestination up front, so resolve it from the stored
+    // session before composing the graph at all -- without this, every cold
+    // start unconditionally rendered RegistrationScreen even with a perfectly
+    // valid saved session, which looked exactly like an automatic logout.
+    var startDestination by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        val hasSession = AuthSessionStore(context).session.first() != null
+        startDestination = if (hasSession) Routes.DASHBOARD else Routes.AUTH
+    }
+
+    val resolvedStartDestination = startDestination
+    if (resolvedStartDestination == null) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Routes.AUTH,
+        startDestination = resolvedStartDestination,
         modifier = modifier,
         enterTransition = {
             fadeIn(tween(350, easing = MotionEasing)) +
@@ -134,7 +169,15 @@ fun GabAINavGraph(
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }
                 },
-                onNavigateToRegister = { navController.popBackStack() }
+                onNavigateToRegister = { navController.popBackStack() },
+                onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) }
+            )
+        }
+
+        // Forgot password screen
+        composable(Routes.FORGOT_PASSWORD) {
+            ForgotPasswordScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -219,9 +262,14 @@ fun GabAINavGraph(
             ChatTranscriptScreen(sessionId = sessionId, navController = navController)
         }
 
+        // Nearest Clinics screen
+        composable(Routes.NEAREST_CLINICS) {
+            NearestClinicsScreen(navController = navController)
+        }
+
         // Settings screen
         composable(Routes.SETTINGS) {
-            PlaceholderScreen(title = "Settings", navController = navController)
+            SettingsScreen(navController = navController)
         }
 
         // Daily Wellness screens

@@ -17,6 +17,18 @@ data class RefreshRequest(
     val refreshToken: String
 )
 
+data class ForgotPasswordRequest(
+    val email: String
+)
+
+data class GoogleSignInRequest(
+    val idToken: String
+)
+
+data class ForgotPasswordResponse(
+    val message: String
+)
+
 data class UserDto(
     val id: String,
     val email: String,

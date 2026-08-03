@@ -8,6 +8,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,10 +18,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.gabai.data.auth.GoogleAuthHelper
+import com.gabai.data.auth.GoogleSignInResult
 import com.gabai.data.local.repository.AuthSessionStore
 import com.gabai.data.remote.api.RetrofitClient
+import com.gabai.data.remote.models.GoogleSignInRequest
 import com.gabai.data.remote.models.LoginRequest
 import com.gabai.presentation.theme.*
 import kotlinx.coroutines.launch
@@ -28,15 +34,43 @@ import retrofit2.HttpException
 @Composable
 fun LoginScreen(
     onLoginComplete: () -> Unit = {},
-    onNavigateToRegister: () -> Unit = {}
+    onNavigateToRegister: () -> Unit = {},
+    onNavigateToForgotPassword: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isGoogleSigningIn by remember { mutableStateOf(false) }
+    var googleErrorMessage by remember { mutableStateOf<String?>(null) }
+
+    fun handleGoogleSignIn() {
+        googleErrorMessage = null
+        isGoogleSigningIn = true
+        coroutineScope.launch {
+            when (val result = GoogleAuthHelper.signIn(context)) {
+                is GoogleSignInResult.Success -> {
+                    try {
+                        val response = RetrofitClient.getApiService(context)
+                            .googleSignIn(GoogleSignInRequest(result.idToken))
+                        AuthSessionStore(context).saveSession(response)
+                        onLoginComplete()
+                    } catch (e: Exception) {
+                        googleErrorMessage = "Couldn't sign in with Google. Please try again."
+                    }
+                }
+                is GoogleSignInResult.Cancelled -> Unit
+                is GoogleSignInResult.NotConfigured ->
+                    googleErrorMessage = "Google sign-in isn't set up for this build yet."
+                is GoogleSignInResult.Failure -> googleErrorMessage = result.message
+            }
+            isGoogleSigningIn = false
+        }
+    }
 
     val isFormValid = email.isNotBlank() && password.isNotBlank()
     val windowWidthSize = rememberWindowWidthSize()
@@ -109,13 +143,28 @@ fun LoginScreen(
                     label = { Text("Password") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                            )
+                        }
+                    },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         focusedLabelColor = MaterialTheme.colorScheme.primary
                     )
                 )
+
+                TextButton(
+                    onClick = onNavigateToForgotPassword,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Forgot password?")
+                }
 
                 if (errorMessage != null) {
                     Text(
@@ -174,6 +223,43 @@ fun LoginScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "or",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = Dimens.SpaceS)
+                    )
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                }
+
+                OutlinedButton(
+                    onClick = { handleGoogleSignIn() },
+                    enabled = !isGoogleSigningIn,
+                    shape = PillShape,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Dimens.ButtonHeight)
+                ) {
+                    if (isGoogleSigningIn) {
+                        CircularProgressIndicator(modifier = Modifier.size(Dimens.SpaceM), strokeWidth = 2.dp)
+                    } else {
+                        Text("Continue with Google")
+                    }
+                }
+
+                if (googleErrorMessage != null) {
+                    Text(
+                        text = googleErrorMessage.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
 
                 TextButton(onClick = onNavigateToRegister) {
