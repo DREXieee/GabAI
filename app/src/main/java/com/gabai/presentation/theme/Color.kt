@@ -10,7 +10,6 @@ import androidx.compose.ui.graphics.Color
 val Coral = Color(0xFFED9455)
 val CoralDark = Color(0xFFD97D3D)
 val Gold = Color(0xFFF4B740)
-val Cream = Color(0xFFFDF6EC)
 val Ink = Color(0xFF2B2F55)
 val MutedGray = Color(0xFF8B8FA3)
 
@@ -37,7 +36,7 @@ val LightOnTertiary = Color.White
 val LightTertiaryContainer = Color(0xFFD7F2E3)
 val LightOnTertiaryContainer = Color(0xFF1D6B45)
 
-val LightBackground = Cream
+val LightBackground = Color.White
 val LightOnBackground = Ink
 val LightSurface = Color.White
 val LightOnSurface = Ink
