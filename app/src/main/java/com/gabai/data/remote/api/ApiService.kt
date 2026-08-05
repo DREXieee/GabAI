@@ -20,6 +20,8 @@ import com.gabai.data.remote.models.LoginRequest
 import com.gabai.data.remote.models.OpenSlotsResponse
 import com.gabai.data.remote.models.RefreshRequest
 import com.gabai.data.remote.models.RegisterRequest
+import com.gabai.data.remote.models.UpdateLocationRequest
+import com.gabai.data.remote.models.UpdateLocationResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
@@ -42,6 +44,9 @@ interface ApiService {
 
     @POST("api/auth/google")
     suspend fun googleSignIn(@Body request: GoogleSignInRequest): AuthResponse
+
+    @PATCH("api/auth/location")
+    suspend fun updateLocation(@Body request: UpdateLocationRequest): UpdateLocationResponse
 
     @POST("api/chat/message")
     suspend fun sendChatMessage(@Body request: ChatMessageRequest): ChatMessageResponse

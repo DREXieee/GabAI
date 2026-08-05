@@ -33,7 +33,7 @@ import retrofit2.HttpException
 
 @Composable
 fun LoginScreen(
-    onLoginComplete: () -> Unit = {},
+    onLoginComplete: (needsLocation: Boolean) -> Unit = {},
     onNavigateToRegister: () -> Unit = {},
     onNavigateToForgotPassword: () -> Unit = {}
 ) {
@@ -58,7 +58,8 @@ fun LoginScreen(
                         val response = RetrofitClient.getApiService(context)
                             .googleSignIn(GoogleSignInRequest(result.idToken))
                         AuthSessionStore(context).saveSession(response)
-                        onLoginComplete()
+                        val needsLocation = response.user.province.isNullOrBlank() || response.user.city.isNullOrBlank()
+                        onLoginComplete(needsLocation)
                     } catch (e: Exception) {
                         googleErrorMessage = "Couldn't sign in with Google. Please try again."
                     }
@@ -186,7 +187,8 @@ fun LoginScreen(
                                     LoginRequest(email = email.trim(), password = password)
                                 )
                                 AuthSessionStore(context).saveSession(response)
-                                onLoginComplete()
+                                val needsLocation = response.user.province.isNullOrBlank() || response.user.city.isNullOrBlank()
+                                onLoginComplete(needsLocation)
                             } catch (e: HttpException) {
                                 errorMessage = if (e.code() == 401)
                                     "Incorrect email or password."

@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.gabai.data.local.repository.AuthSessionStore
 import com.gabai.domain.model.CrisisLevel
+import com.gabai.presentation.ui.auth.CompleteProfileScreen
 import com.gabai.presentation.ui.auth.ForgotPasswordScreen
 import com.gabai.presentation.ui.auth.LoginScreen
 import com.gabai.presentation.ui.auth.RegistrationScreen
@@ -56,6 +57,7 @@ private const val ARG_CONSULTATION_ID = "consultationId"
 object Routes {
     const val AUTH = "auth"
     const val LOGIN = "login"
+    const val COMPLETE_PROFILE = "complete_profile"
     const val FORGOT_PASSWORD = "forgot_password"
     const val DASHBOARD = "dashboard"
     const val CHATBOT = "chatbot"
@@ -177,8 +179,9 @@ fun GabAINavGraph(
         // Auth screen (Registration)
         composable(Routes.AUTH) {
             RegistrationScreen(
-                onRegistrationComplete = {
-                    navController.navigate(Routes.DASHBOARD) {
+                onRegistrationComplete = { needsLocation ->
+                    val destination = if (needsLocation) Routes.COMPLETE_PROFILE else Routes.DASHBOARD
+                    navController.navigate(destination) {
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }
                 },
@@ -189,13 +192,25 @@ fun GabAINavGraph(
         // Login screen
         composable(Routes.LOGIN) {
             LoginScreen(
-                onLoginComplete = {
-                    navController.navigate(Routes.DASHBOARD) {
+                onLoginComplete = { needsLocation ->
+                    val destination = if (needsLocation) Routes.COMPLETE_PROFILE else Routes.DASHBOARD
+                    navController.navigate(destination) {
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }
                 },
                 onNavigateToRegister = { navController.popBackStack() },
                 onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) }
+            )
+        }
+
+        // Post-Google-signup profile completion (province/city)
+        composable(Routes.COMPLETE_PROFILE) {
+            CompleteProfileScreen(
+                onLocationSaved = {
+                    navController.navigate(Routes.DASHBOARD) {
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    }
+                }
             )
         }
 

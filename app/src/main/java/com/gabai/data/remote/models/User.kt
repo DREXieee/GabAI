@@ -25,6 +25,11 @@ data class GoogleSignInRequest(
     val idToken: String
 )
 
+data class UpdateLocationRequest(
+    val province: String,
+    val city: String
+)
+
 data class ForgotPasswordResponse(
     val message: String
 )
@@ -32,7 +37,13 @@ data class ForgotPasswordResponse(
 data class UserDto(
     val id: String,
     val email: String,
-    val displayName: String
+    val displayName: String,
+    val province: String? = null,
+    val city: String? = null
+)
+
+data class UpdateLocationResponse(
+    val user: UserDto
 )
 
 data class AuthResponse(
