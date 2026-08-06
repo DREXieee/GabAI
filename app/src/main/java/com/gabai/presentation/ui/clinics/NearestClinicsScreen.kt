@@ -105,6 +105,13 @@ fun NearestClinicsScreen(navController: NavController? = null) {
                 .fillMaxSize()
                 .screenContentPadding(paddingValues)
         ) {
+            Text(
+                text = "We'll refer you to a nearby participating clinic in your city or municipality for professional support.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Dimens.SpaceS)
+            )
+
             if (!permissionsGranted) {
                 Text(
                     text = "Location access is off, so clinics below aren't sorted by distance. " +

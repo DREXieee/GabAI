@@ -110,6 +110,12 @@ fun EscalationScreen(
                 fontWeight = FontWeight.SemiBold
             )
 
+            Text(
+                text = "This starts our escalation process — connecting you with a real, trained person quickly.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
             SafetyResourcesCard()
 
             AnimatedContent(

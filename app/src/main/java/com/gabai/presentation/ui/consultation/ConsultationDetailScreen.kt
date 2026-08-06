@@ -71,7 +71,7 @@ fun ConsultationDetailScreen(consultationId: String, navController: NavControlle
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Consultation", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Real-Time Consultation", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = { navController?.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

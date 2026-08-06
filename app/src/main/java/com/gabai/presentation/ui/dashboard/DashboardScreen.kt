@@ -199,7 +199,7 @@ fun DashboardScreen(
                         ) {
                             HeroActionCard(
                                 title = "Talk to GabAI",
-                                description = "Chat for mental wellness support, any time",
+                                description = "Your initial consultation with GabAI, any time",
                                 icon = Icons.Filled.Forum,
                                 accentColor = accents.green,
                                 onClick = { navController?.navigate(Routes.CHATBOT) },
@@ -225,8 +225,8 @@ fun DashboardScreen(
                             verticalArrangement = Arrangement.spacedBy(Dimens.SpaceM)
                         ) {
                             ActionCard(
-                                title = "Request Consultation",
-                                description = "Book with a professional",
+                                title = "Real-Time Consultation",
+                                description = "Book a live video visit with a professional",
                                 icon = Icons.Filled.MedicalServices,
                                 accentColor = accents.indigo,
                                 onClick = { navController?.navigate(Routes.CONSULTATION) },
@@ -254,7 +254,7 @@ fun DashboardScreen(
                     // reuses its own green across the tall tile and the footer.
                     WideActionCard(
                         title = "Nearest Clinics",
-                        description = "Find psychological clinics near you",
+                        description = "Get referred to a nearby participating clinic",
                         icon = Icons.Filled.LocationOn,
                         accentColor = accents.green,
                         onClick = { navController?.navigate(Routes.NEAREST_CLINICS) },

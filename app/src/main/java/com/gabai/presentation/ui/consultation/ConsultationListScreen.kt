@@ -60,7 +60,7 @@ fun ConsultationListScreen(navController: NavController? = null) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Consultations", fontWeight = FontWeight.SemiBold) },
+                title = { Text("My Real-Time Consultations", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = { navController?.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -125,18 +125,18 @@ private fun EmptyState(onBookClick: () -> Unit) {
             modifier = Modifier.padding(bottom = Dimens.SpaceM)
         )
         Text(
-            text = "No consultations yet",
+            text = "No real-time consultations yet",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            text = "Book time with a mental health professional whenever you're ready.",
+            text = "Book a live video visit with a mental health professional whenever you're ready.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = Dimens.SpaceXS, bottom = Dimens.SpaceL)
         )
         Button(onClick = onBookClick) {
-            Text("Book a Consultation")
+            Text("Book a Real-Time Consultation")
         }
     }
 }
