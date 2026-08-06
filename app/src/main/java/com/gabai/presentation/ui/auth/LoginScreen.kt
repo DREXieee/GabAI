@@ -1,13 +1,11 @@
 package com.gabai.presentation.ui.auth
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -15,12 +13,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.gabai.R
 import com.gabai.data.auth.GoogleAuthHelper
 import com.gabai.data.auth.GoogleSignInResult
 import com.gabai.data.local.repository.AuthSessionStore
@@ -93,19 +93,14 @@ fun LoginScreen(
             ) {
                 Spacer(modifier = Modifier.height(Dimens.SpaceXL))
 
-                Box(
-                    modifier = Modifier
-                        .size(Dimens.AuthIconBadgeSize)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.SelfImprovement,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(Dimens.IconSizeL)
-                    )
-                }
+                // The logo has its own built-in bubble shape and gradient, so
+                // it's shown directly rather than wrapped in another colored
+                // badge circle like the other auth screens' generic icons.
+                Image(
+                    painter = painterResource(R.drawable.logo_gabai),
+                    contentDescription = "GabAI",
+                    modifier = Modifier.size(Dimens.AuthIconBadgeSize)
+                )
 
                 Spacer(modifier = Modifier.height(Dimens.SpaceS))
 

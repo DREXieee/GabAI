@@ -18,6 +18,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,9 +41,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.gabai.R
 import com.gabai.data.remote.api.BackendChatRepositoryImpl
 import com.gabai.data.remote.api.RetrofitClient
 import com.gabai.domain.model.ChatMessage
@@ -235,10 +238,18 @@ fun ChatbotScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "GabAI Assistant",
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(R.drawable.logo_gabai),
+                            contentDescription = null,
+                            modifier = Modifier.size(Dimens.SpaceL)
+                        )
+                        Spacer(modifier = Modifier.width(Dimens.SpaceXS))
+                        Text(
+                            text = "GabAI Assistant",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController?.navigateUp() }) {

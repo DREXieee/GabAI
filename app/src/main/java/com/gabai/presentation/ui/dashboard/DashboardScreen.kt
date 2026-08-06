@@ -9,6 +9,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -37,10 +38,12 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.gabai.R
 import com.gabai.data.local.repository.AuthSessionStore
 import com.gabai.domain.model.CrisisLevel
 import com.gabai.presentation.navigation.Routes
@@ -76,7 +79,21 @@ fun DashboardScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = {},
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(R.drawable.logo_gabai),
+                            contentDescription = null,
+                            modifier = Modifier.size(Dimens.IconBadgeSize - Dimens.SpaceM)
+                        )
+                        Spacer(modifier = Modifier.width(Dimens.SpaceXS))
+                        Text(
+                            text = "GabAI",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
                 actions = {
                     IconButton(onClick = { navController?.navigate(Routes.SETTINGS) }) {
                         if (firstName != null) {
