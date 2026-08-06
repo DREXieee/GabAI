@@ -53,7 +53,19 @@ import com.gabai.presentation.theme.rememberWindowWidthSize
 import com.gabai.presentation.theme.screenContentPadding
 import com.gabai.presentation.ui.common.SafetyDisclaimerLine
 import com.gabai.presentation.ui.common.SafetyResourcesCard
+import kotlinx.coroutines.delay
 import java.io.File
+
+// Auto-stop tuning for the mic button's silence detection -- a panic-attack
+// user shouldn't have to remember to tap stop. getMaxAmplitude()'s scale
+// varies by device/mic gain, so this threshold may need real-device tuning;
+// SPEECH_GRACE skips the initial pre-speech beat so it isn't mistaken for
+// "already done talking."
+private const val SILENCE_AMPLITUDE_THRESHOLD = 2000
+private const val SILENCE_DURATION_MS = 1500L
+private const val SPEECH_GRACE_MS = 800L
+private const val MAX_RECORDING_MS = 60_000L
+private const val AMPLITUDE_POLL_INTERVAL_MS = 150L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,6 +135,39 @@ fun ChatbotScreen(
         if (file != null && file.length() > 0) {
             viewModel.sendVoiceMessage(file.readBytes(), "audio/m4a")
             file.delete()
+        }
+    }
+
+    // Auto-stop once the user has gone quiet for a bit, so they don't have
+    // to remember to tap stop themselves. Tap-to-stop (above) still works as
+    // an override to cut a recording short.
+    LaunchedEffect(isRecording) {
+        if (!isRecording) return@LaunchedEffect
+        val startedAt = System.currentTimeMillis()
+        var silenceStartedAt: Long? = null
+        while (isRecording) {
+            delay(AMPLITUDE_POLL_INTERVAL_MS)
+            val elapsed = System.currentTimeMillis() - startedAt
+            if (elapsed >= MAX_RECORDING_MS) {
+                stopRecordingAndSend()
+                break
+            }
+            if (elapsed < SPEECH_GRACE_MS) continue
+
+            val amplitude = try {
+                mediaRecorder?.maxAmplitude ?: break
+            } catch (e: IllegalStateException) {
+                break
+            }
+            if (amplitude < SILENCE_AMPLITUDE_THRESHOLD) {
+                val silenceStart = silenceStartedAt ?: System.currentTimeMillis().also { silenceStartedAt = it }
+                if (System.currentTimeMillis() - silenceStart >= SILENCE_DURATION_MS) {
+                    stopRecordingAndSend()
+                    break
+                }
+            } else {
+                silenceStartedAt = null
+            }
         }
     }
 
