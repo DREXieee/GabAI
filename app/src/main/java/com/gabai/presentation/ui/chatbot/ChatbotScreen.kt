@@ -29,6 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
@@ -66,6 +68,8 @@ private const val SILENCE_DURATION_MS = 1500L
 private const val SPEECH_GRACE_MS = 800L
 private const val MAX_RECORDING_MS = 60_000L
 private const val AMPLITUDE_POLL_INTERVAL_MS = 150L
+
+private enum class SpeechPlaybackState { IDLE, PLAYING, PAUSED }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -175,11 +179,27 @@ fun ChatbotScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) startRecording() }
 
+    var speechPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var speechPlaybackState by remember { mutableStateOf(SpeechPlaybackState.IDLE) }
+
+    fun toggleSpeechPlayback() {
+        val player = speechPlayer ?: return
+        if (player.isPlaying) {
+            player.pause()
+            speechPlaybackState = SpeechPlaybackState.PAUSED
+        } else {
+            player.start()
+            speechPlaybackState = SpeechPlaybackState.PLAYING
+        }
+    }
+
     // Plays each assistant reply's synthesized speech as it arrives -- a
     // SharedFlow (not StateFlow) so a config change doesn't replay the last clip.
     LaunchedEffect(Unit) {
         viewModel.speechEvents.collect { audioBytes ->
             try {
+                // Only one reply plays at a time -- a new one interrupts whatever's still going.
+                speechPlayer?.release()
                 val file = File.createTempFile("gabai-tts", ".mp3", context.cacheDir)
                 file.writeBytes(audioBytes)
                 val player = MediaPlayer()
@@ -187,13 +207,21 @@ fun ChatbotScreen(
                 player.setOnCompletionListener {
                     it.release()
                     file.delete()
+                    speechPlayer = null
+                    speechPlaybackState = SpeechPlaybackState.IDLE
                 }
                 player.prepare()
                 player.start()
+                speechPlayer = player
+                speechPlaybackState = SpeechPlaybackState.PLAYING
             } catch (e: Exception) {
                 // Silent -- read-aloud is a best-effort convenience layer.
             }
         }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { speechPlayer?.release() }
     }
 
     // Auto-scroll to bottom when new messages arrive
@@ -232,6 +260,12 @@ fun ChatbotScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .screenContentPadding(paddingValues)
+                // Without this, the keyboard just overlays the screen instead of
+                // resizing it (this app draws edge-to-edge, so the system no
+                // longer does that automatically) -- the messages list below,
+                // being the only weight(1f) child, would end up hidden behind
+                // the keyboard instead of shrinking to stay visible above it.
+                .imePadding()
         ) {
             // Messages List
             LazyColumn(
@@ -337,6 +371,30 @@ fun ChatbotScreen(
                 )
             }
 
+            if (speechPlaybackState != SpeechPlaybackState.IDLE) {
+                TextButton(
+                    onClick = { toggleSpeechPlayback() },
+                    contentPadding = PaddingValues(horizontal = Dimens.SpaceS, vertical = Dimens.SpaceXXS)
+                ) {
+                    Icon(
+                        imageVector = if (speechPlaybackState == SpeechPlaybackState.PLAYING)
+                            Icons.Filled.Pause
+                        else
+                            Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(Dimens.SpaceM)
+                    )
+                    Text(
+                        text = if (speechPlaybackState == SpeechPlaybackState.PLAYING)
+                            "Pause voice reply"
+                        else
+                            "Resume voice reply",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = Dimens.SpaceXXS)
+                    )
+                }
+            }
+
             // Input Field
             Row(
                 modifier = Modifier
@@ -345,45 +403,6 @@ fun ChatbotScreen(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXS),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Tap-to-toggle rather than press-and-hold -- more reliable across
-                // devices than a held gesture, and doesn't require sustained
-                // contact with the screen through a panic response.
-                IconButton(
-                    onClick = {
-                        if (isRecording) {
-                            stopRecordingAndSend()
-                        } else {
-                            val hasPermission = ContextCompat.checkSelfPermission(
-                                context, Manifest.permission.RECORD_AUDIO
-                            ) == PackageManager.PERMISSION_GRANTED
-                            if (hasPermission) {
-                                startRecording()
-                            } else {
-                                recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                            }
-                        }
-                    },
-                    enabled = !isTranscribing,
-                    modifier = Modifier
-                        .size(Dimens.SendButtonSize)
-                        .background(
-                            color = if (isRecording)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant,
-                            shape = PillShape
-                        )
-                ) {
-                    Icon(
-                        imageVector = if (isRecording) Icons.Filled.Stop else Icons.Filled.Mic,
-                        contentDescription = if (isRecording) "Stop recording" else "Record a voice message",
-                        tint = if (isRecording)
-                            MaterialTheme.colorScheme.onError
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = { messageText = it },
@@ -420,6 +439,45 @@ fun ChatbotScreen(
                         contentDescription = "Send",
                         tint = if (messageText.isNotBlank())
                             MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Tap-to-toggle rather than press-and-hold -- more reliable across
+                // devices than a held gesture, and doesn't require sustained
+                // contact with the screen through a panic response.
+                IconButton(
+                    onClick = {
+                        if (isRecording) {
+                            stopRecordingAndSend()
+                        } else {
+                            val hasPermission = ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.RECORD_AUDIO
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (hasPermission) {
+                                startRecording()
+                            } else {
+                                recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        }
+                    },
+                    enabled = !isTranscribing,
+                    modifier = Modifier
+                        .size(Dimens.SendButtonSize)
+                        .background(
+                            color = if (isRecording)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            shape = PillShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isRecording) Icons.Filled.Stop else Icons.Filled.Mic,
+                        contentDescription = if (isRecording) "Stop recording" else "Record a voice message",
+                        tint = if (isRecording)
+                            MaterialTheme.colorScheme.onError
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant
                     )
