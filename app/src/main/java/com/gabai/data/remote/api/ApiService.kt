@@ -20,14 +20,19 @@ import com.gabai.data.remote.models.LoginRequest
 import com.gabai.data.remote.models.OpenSlotsResponse
 import com.gabai.data.remote.models.RefreshRequest
 import com.gabai.data.remote.models.RegisterRequest
+import com.gabai.data.remote.models.SynthesizeSpeechRequest
+import com.gabai.data.remote.models.TranscribeVoiceRequest
+import com.gabai.data.remote.models.TranscribeVoiceResponse
 import com.gabai.data.remote.models.UpdateLocationRequest
 import com.gabai.data.remote.models.UpdateLocationResponse
+import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 interface ApiService {
     @POST("api/auth/register")
@@ -53,6 +58,13 @@ interface ApiService {
 
     @GET("api/chat/sessions/{id}")
     suspend fun getChatSessionDetail(@Path("id") id: String): ChatSessionDetailDto
+
+    @POST("api/voice/transcribe")
+    suspend fun transcribeVoice(@Body request: TranscribeVoiceRequest): TranscribeVoiceResponse
+
+    @Streaming
+    @POST("api/voice/speak")
+    suspend fun synthesizeSpeech(@Body request: SynthesizeSpeechRequest): ResponseBody
 
     @POST("api/escalations")
     suspend fun createEscalation(@Body request: CreateEscalationRequest): EscalationStatusDto

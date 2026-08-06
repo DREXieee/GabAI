@@ -1,5 +1,12 @@
 package com.gabai.presentation.ui.chatbot
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.media.MediaPlayer
+import android.media.MediaRecorder
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -21,6 +28,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.gabai.data.remote.api.BackendChatRepositoryImpl
@@ -43,6 +53,7 @@ import com.gabai.presentation.theme.rememberWindowWidthSize
 import com.gabai.presentation.theme.screenContentPadding
 import com.gabai.presentation.ui.common.SafetyDisclaimerLine
 import com.gabai.presentation.ui.common.SafetyResourcesCard
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +74,82 @@ fun ChatbotScreen(
     val isTyping by viewModel.isTyping.collectAsState()
     val escalationId by viewModel.escalationId.collectAsState()
     val sessionId by viewModel.sessionId.collectAsState()
+    val isTranscribing by viewModel.isTranscribing.collectAsState()
+    val voiceError by viewModel.voiceError.collectAsState()
     val listState = rememberLazyListState()
+
+    val context = LocalContext.current
+    var isRecording by remember { mutableStateOf(false) }
+    var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var audioFile by remember { mutableStateOf<File?>(null) }
+
+    fun startRecording() {
+        val file = File.createTempFile("gabai-voice", ".m4a", context.cacheDir)
+        val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(context)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaRecorder()
+        }
+        try {
+            recorder.apply {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setOutputFile(file.absolutePath)
+                prepare()
+                start()
+            }
+            mediaRecorder = recorder
+            audioFile = file
+            isRecording = true
+        } catch (e: Exception) {
+            recorder.release()
+        }
+    }
+
+    fun stopRecordingAndSend() {
+        val recorder = mediaRecorder ?: return
+        val file = audioFile
+        try {
+            recorder.stop()
+        } catch (e: Exception) {
+            // A stop() this soon after start() (e.g. an accidental tap) throws --
+            // there's no usable audio either way, so just drop it.
+        }
+        recorder.release()
+        mediaRecorder = null
+        isRecording = false
+        if (file != null && file.length() > 0) {
+            viewModel.sendVoiceMessage(file.readBytes(), "audio/m4a")
+            file.delete()
+        }
+    }
+
+    val recordPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) startRecording() }
+
+    // Plays each assistant reply's synthesized speech as it arrives -- a
+    // SharedFlow (not StateFlow) so a config change doesn't replay the last clip.
+    LaunchedEffect(Unit) {
+        viewModel.speechEvents.collect { audioBytes ->
+            try {
+                val file = File.createTempFile("gabai-tts", ".mp3", context.cacheDir)
+                file.writeBytes(audioBytes)
+                val player = MediaPlayer()
+                player.setDataSource(file.absolutePath)
+                player.setOnCompletionListener {
+                    it.release()
+                    file.delete()
+                }
+                player.prepare()
+                player.start()
+            } catch (e: Exception) {
+                // Silent -- read-aloud is a best-effort convenience layer.
+            }
+        }
+    }
 
     // Auto-scroll to bottom when new messages arrive
     LaunchedEffect(messages.size) {
@@ -189,6 +275,23 @@ fun ChatbotScreen(
                 }
             }
 
+            if (isTranscribing) {
+                Text(
+                    text = "Listening…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = Dimens.SpaceXXS)
+                )
+            }
+            voiceError?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = Dimens.SpaceXXS)
+                )
+            }
+
             // Input Field
             Row(
                 modifier = Modifier
@@ -197,11 +300,51 @@ fun ChatbotScreen(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXS),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Tap-to-toggle rather than press-and-hold -- more reliable across
+                // devices than a held gesture, and doesn't require sustained
+                // contact with the screen through a panic response.
+                IconButton(
+                    onClick = {
+                        if (isRecording) {
+                            stopRecordingAndSend()
+                        } else {
+                            val hasPermission = ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.RECORD_AUDIO
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (hasPermission) {
+                                startRecording()
+                            } else {
+                                recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        }
+                    },
+                    enabled = !isTranscribing,
+                    modifier = Modifier
+                        .size(Dimens.SendButtonSize)
+                        .background(
+                            color = if (isRecording)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            shape = PillShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isRecording) Icons.Filled.Stop else Icons.Filled.Mic,
+                        contentDescription = if (isRecording) "Stop recording" else "Record a voice message",
+                        tint = if (isRecording)
+                            MaterialTheme.colorScheme.onError
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = { messageText = it },
                     placeholder = { Text("Type your message...") },
                     modifier = Modifier.weight(1f),
+                    enabled = !isRecording && !isTranscribing,
                     maxLines = 4,
                     shape = PillShape,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -216,7 +359,7 @@ fun ChatbotScreen(
                             messageText = ""
                         }
                     },
-                    enabled = messageText.isNotBlank(),
+                    enabled = messageText.isNotBlank() && !isRecording && !isTranscribing,
                     modifier = Modifier
                         .size(Dimens.SendButtonSize)
                         .background(

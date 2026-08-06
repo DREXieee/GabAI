@@ -64,3 +64,16 @@ data class ChatMessageResponse(
     val crisisLevel: String,
     val escalationId: String?
 )
+
+data class TranscribeVoiceRequest(
+    val audioBase64: String,
+    val mimeType: String
+)
+
+data class TranscribeVoiceResponse(
+    val text: String
+)
+
+data class SynthesizeSpeechRequest(
+    val text: String
+)

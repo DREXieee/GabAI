@@ -1,11 +1,14 @@
 package com.gabai.data.remote.api
 
+import android.util.Base64
 import android.util.Log
 import com.gabai.domain.model.AssessmentSource
 import com.gabai.domain.model.CrisisAssessment
 import com.gabai.domain.model.CrisisLevel
 import com.gabai.domain.repository.ChatRepository
 import com.gabai.data.remote.models.ChatMessageRequest
+import com.gabai.data.remote.models.SynthesizeSpeechRequest
+import com.gabai.data.remote.models.TranscribeVoiceRequest
 import kotlinx.coroutines.CancellationException
 
 private const val TAG = "BackendChatRepository"
@@ -50,5 +53,14 @@ class BackendChatRepositoryImpl(private val apiService: ApiService) : ChatReposi
             Log.w(TAG, "Backend chat call failed, falling back to canned response", e)
             CrisisAssessment(networkFallbackReply, CrisisLevel.NONE, AssessmentSource.FALLBACK)
         }
+    }
+
+    override suspend fun transcribeAudio(audioBytes: ByteArray, mimeType: String): String {
+        val audioBase64 = Base64.encodeToString(audioBytes, Base64.NO_WRAP)
+        return apiService.transcribeVoice(TranscribeVoiceRequest(audioBase64, mimeType)).text
+    }
+
+    override suspend fun synthesizeSpeech(text: String): ByteArray {
+        return apiService.synthesizeSpeech(SynthesizeSpeechRequest(text)).bytes()
     }
 }
