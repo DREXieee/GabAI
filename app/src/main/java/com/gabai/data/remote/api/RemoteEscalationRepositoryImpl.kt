@@ -14,7 +14,7 @@ private val TERMINAL_STATUSES = setOf(RemoteEscalationStatus.RESOLVED, RemoteEsc
 
 class RemoteEscalationRepositoryImpl(private val apiService: ApiService) : EscalationRepository {
 
-    override suspend fun requestHumanSupport(sessionId: String, crisisLevel: CrisisLevel): String {
+    override suspend fun requestHumanSupport(sessionId: String?, crisisLevel: CrisisLevel): String {
         val response = apiService.createEscalation(CreateEscalationRequest(sessionId, crisisLevel.name))
         return response.id
     }

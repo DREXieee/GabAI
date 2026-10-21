@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.navigation.compose.rememberNavController
 import com.gabai.presentation.navigation.GabAINavGraph
 import com.gabai.presentation.theme.GabAITheme
+import com.gabai.presentation.util.RequestPermissionsOnFirstLaunch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -14,6 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             GabAITheme {
+                RequestPermissionsOnFirstLaunch()
                 val navController = rememberNavController()
                 GabAINavGraph(navController = navController)
             }

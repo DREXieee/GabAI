@@ -14,12 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,6 +29,9 @@ import androidx.navigation.NavController
 import com.gabai.domain.model.WellnessLibrary
 import com.gabai.presentation.theme.Dimens
 import com.gabai.presentation.theme.screenContentPadding
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
+import com.gabai.presentation.ui.common.GabAILogoButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,11 +42,7 @@ fun WellnessDetailScreen(itemId: String, navController: NavController? = null) {
         topBar = {
             TopAppBar(
                 title = { Text(item?.category?.displayName ?: "Wellness", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController?.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                navigationIcon = { GabAILogoButton(navController) }
             )
         }
     ) { paddingValues ->
@@ -83,7 +78,7 @@ fun WellnessDetailScreen(itemId: String, navController: NavController? = null) {
                     horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXXS)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Schedule,
+                        painter = painterResource(R.drawable.ic_lucide_clock),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)

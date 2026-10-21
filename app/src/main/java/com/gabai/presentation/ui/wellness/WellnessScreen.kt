@@ -12,17 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.Air
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,7 +23,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -42,6 +34,10 @@ import com.gabai.presentation.theme.Dimens
 import com.gabai.presentation.theme.GabAIShapes
 import com.gabai.presentation.theme.LocalGabAIAccents
 import com.gabai.presentation.theme.screenContentPadding
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
+import androidx.annotation.DrawableRes
+import com.gabai.presentation.ui.common.GabAILogoButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,12 +48,8 @@ fun WellnessScreen(navController: NavController? = null) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Daily Wellness", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController?.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                title = { Text("Wellness for Betterness", fontWeight = FontWeight.SemiBold) },
+                navigationIcon = { GabAILogoButton(navController) }
             )
         }
     ) { paddingValues ->
@@ -88,9 +80,9 @@ fun WellnessScreen(navController: NavController? = null) {
                                 WellnessCategory.ARTICLES -> accents.indigo
                             },
                             icon = when (category) {
-                                WellnessCategory.BREATHING -> Icons.Filled.Air
-                                WellnessCategory.COPING_TIPS -> Icons.Filled.Lightbulb
-                                WellnessCategory.ARTICLES -> Icons.AutoMirrored.Filled.Article
+                                WellnessCategory.BREATHING -> R.drawable.ic_lucide_wind
+                                WellnessCategory.COPING_TIPS -> R.drawable.ic_lucide_lightbulb
+                                WellnessCategory.ARTICLES -> R.drawable.ic_lucide_file_text
                             },
                             onClick = { navController?.navigate(Routes.wellnessDetailRoute(wellnessItem.id)) }
                         )
@@ -105,7 +97,7 @@ fun WellnessScreen(navController: NavController? = null) {
 private fun WellnessItemCard(
     item: WellnessItem,
     accentColor: androidx.compose.ui.graphics.Color,
-    icon: ImageVector,
+    @DrawableRes icon: Int,
     onClick: () -> Unit
 ) {
     Card(
@@ -128,7 +120,7 @@ private fun WellnessItemCard(
                     .background(accentColor.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = accentColor)
+                Icon(painter = painterResource(icon), contentDescription = null, tint = accentColor)
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXXS)) {
                 Text(
@@ -145,7 +137,7 @@ private fun WellnessItemCard(
                 )
             }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                painter = painterResource(R.drawable.ic_lucide_chevron_right),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(14.dp)

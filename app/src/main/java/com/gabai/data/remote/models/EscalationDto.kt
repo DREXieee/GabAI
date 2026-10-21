@@ -1,7 +1,9 @@
 package com.gabai.data.remote.models
 
 data class CreateEscalationRequest(
-    val sessionId: String,
+    // Null when asking from the dashboard before any chat exists; the server
+    // then opens a session itself.
+    val sessionId: String?,
     val crisisLevel: String
 )
 

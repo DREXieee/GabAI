@@ -46,7 +46,7 @@ class EscalationViewModel(
     }
 
     /** The patient is explicitly asking for a human — create the escalation, then watch it. */
-    fun requestHumanSupport(sessionId: String, crisisLevel: CrisisLevel) {
+    fun requestHumanSupport(sessionId: String?, crisisLevel: CrisisLevel) {
         if (_isRequesting.value || pollingJob != null) return
         viewModelScope.launch {
             _isRequesting.value = true

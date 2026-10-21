@@ -53,7 +53,9 @@ private const val ARG_TOKEN = "token"
 private const val ARG_WELLNESS_ITEM_ID = "itemId"
 private const val ARG_CONSULTATION_ID = "consultationId"
 
-// Navigation routes
+// Navigation routes. The chat is the app's home: login, registration and a
+// restored session all land on CHATBOT, and the logo in its top bar opens
+// DASHBOARD (the menu) on top of it.
 object Routes {
     const val AUTH = "auth"
     const val LOGIN = "login"
@@ -121,7 +123,7 @@ fun GabAINavGraph(
     var startDestination by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         val hasSession = authStore.session.first() != null
-        startDestination = if (hasSession) Routes.DASHBOARD else Routes.AUTH
+        startDestination = if (hasSession) Routes.CHATBOT else Routes.AUTH
     }
 
     val resolvedStartDestination = startDestination
@@ -142,7 +144,7 @@ fun GabAINavGraph(
     // duplicated at each call site (including the manual "Log out" button,
     // which now only needs to clear the session, not navigate itself).
     LaunchedEffect(navController) {
-        var hasSeenSession = resolvedStartDestination == Routes.DASHBOARD
+        var hasSeenSession = resolvedStartDestination == Routes.CHATBOT
         authStore.session.collect { session ->
             if (session != null) {
                 hasSeenSession = true
@@ -180,7 +182,7 @@ fun GabAINavGraph(
         composable(Routes.AUTH) {
             RegistrationScreen(
                 onRegistrationComplete = { needsLocation ->
-                    val destination = if (needsLocation) Routes.COMPLETE_PROFILE else Routes.DASHBOARD
+                    val destination = if (needsLocation) Routes.COMPLETE_PROFILE else Routes.CHATBOT
                     navController.navigate(destination) {
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }
@@ -193,7 +195,7 @@ fun GabAINavGraph(
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginComplete = { needsLocation ->
-                    val destination = if (needsLocation) Routes.COMPLETE_PROFILE else Routes.DASHBOARD
+                    val destination = if (needsLocation) Routes.COMPLETE_PROFILE else Routes.CHATBOT
                     navController.navigate(destination) {
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }
@@ -207,7 +209,7 @@ fun GabAINavGraph(
         composable(Routes.COMPLETE_PROFILE) {
             CompleteProfileScreen(
                 onLocationSaved = {
-                    navController.navigate(Routes.DASHBOARD) {
+                    navController.navigate(Routes.CHATBOT) {
                         popUpTo(navController.graph.startDestinationId) { inclusive = true }
                     }
                 }
@@ -312,7 +314,7 @@ fun GabAINavGraph(
             SettingsScreen(navController = navController)
         }
 
-        // Daily Wellness screens
+        // Wellness for Betterness screens
         composable(Routes.WELLNESS) {
             WellnessScreen(navController = navController)
         }

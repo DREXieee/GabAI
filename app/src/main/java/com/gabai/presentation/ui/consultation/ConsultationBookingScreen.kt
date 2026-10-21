@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,6 +43,9 @@ import com.gabai.presentation.theme.GabAIShapes
 import com.gabai.presentation.theme.screenContentPadding
 import com.gabai.presentation.util.formatFriendlyDate
 import com.gabai.presentation.util.formatFriendlyTime
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
+import com.gabai.presentation.ui.common.GabAILogoButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,14 +85,16 @@ fun ConsultationBookingScreen(navController: NavController? = null) {
             TopAppBar(
                 title = { Text(title, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        when {
-                            selectedSlot != null -> selectedSlot = null
-                            selectedDoctorId != null -> selectedDoctorId = null
-                            else -> navController?.navigateUp()
+                    // Mid-flow, the arrow steps back within the booking; at the
+                    // first step it's the logo, like every other screen.
+                    if (selectedSlot != null || selectedDoctorId != null) {
+                        IconButton(onClick = {
+                            if (selectedSlot != null) selectedSlot = null else selectedDoctorId = null
+                        }) {
+                            Icon(painterResource(R.drawable.ic_lucide_arrow_left), contentDescription = "Back")
                         }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    } else {
+                        GabAILogoButton(navController)
                     }
                 }
             )
@@ -162,7 +164,7 @@ private fun DoctorStep(slots: List<AvailableSlot>, onDoctorSelected: (String) ->
                     horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceM),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(painter = painterResource(R.drawable.ic_lucide_user), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Text(doctorName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 }
             }

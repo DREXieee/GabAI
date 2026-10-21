@@ -10,10 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,6 +40,9 @@ import com.gabai.presentation.theme.Dimens
 import com.gabai.presentation.theme.GabAIShapes
 import com.gabai.presentation.theme.screenContentPadding
 import com.gabai.presentation.util.formatFriendlyDateTime
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
+import com.gabai.presentation.ui.common.GabAILogoButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,16 +59,12 @@ fun ConsultationListScreen(navController: NavController? = null) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Real-Time Consultations", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController?.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+                title = { Text("My Consultations", fontWeight = FontWeight.SemiBold) },
+                navigationIcon = { GabAILogoButton(navController) },
                 actions = {
                     if (consultations.isNotEmpty()) {
                         IconButton(onClick = { navController?.navigate(Routes.CONSULTATION_BOOKING) }) {
-                            Icon(Icons.Filled.Add, contentDescription = "Book a consultation")
+                            Icon(painterResource(R.drawable.ic_lucide_plus), contentDescription = "Book a consultation")
                         }
                     }
                 }
@@ -119,13 +114,13 @@ private fun EmptyState(onBookClick: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = Icons.Filled.MedicalServices,
+            painter = painterResource(R.drawable.ic_lucide_stethoscope),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = Dimens.SpaceM)
         )
         Text(
-            text = "No real-time consultations yet",
+            text = "No consultations yet",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
@@ -136,7 +131,7 @@ private fun EmptyState(onBookClick: () -> Unit) {
             modifier = Modifier.padding(top = Dimens.SpaceXS, bottom = Dimens.SpaceL)
         )
         Button(onClick = onBookClick) {
-            Text("Book a Real-Time Consultation")
+            Text("Book a Consultation")
         }
     }
 }

@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,7 +46,19 @@ import com.gabai.presentation.theme.GabAIShapes
 import com.gabai.presentation.theme.screenContentPadding
 import com.gabai.presentation.ui.clinics.ClinicMap
 import com.gabai.presentation.ui.clinics.clinicDirectionsIntent
+import com.gabai.presentation.ui.common.GabAILogoButton
+import com.gabai.presentation.ui.common.navigateToMenu
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.gabai.presentation.ui.common.SafetyResourcesCard
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +82,50 @@ fun EscalationScreen(
         }
     }
 
+    // A request that is still live: leaving the screen stops the status polling,
+    // and the automatic jump into the staff call only happens from here, so the
+    // patient is asked to confirm before leaving (logo button or system back).
+    val requestActive = isRequesting ||
+        (status != null && status?.status !in setOf(RemoteEscalationStatus.RESOLVED, RemoteEscalationStatus.ABANDONED))
+    var pendingLeave by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val leaveToMenu = { navigateToMenu(navController) }
+
+    // If the request ends or fails while the dialog is up, its warning is no
+    // longer true -- close it rather than leave stale text on screen.
+    LaunchedEffect(requestActive) {
+        if (!requestActive) pendingLeave = null
+    }
+
+    BackHandler(enabled = requestActive) { pendingLeave = { navController?.popBackStack() } }
+
+    pendingLeave?.let { leave ->
+        AlertDialog(
+            onDismissRequest = { pendingLeave = null },
+            title = { Text("Leave this screen?") },
+            text = {
+                Text(
+                    "Your request for a staff member is still active. If you leave now, you " +
+                        "might miss their call. The hotline numbers stay available on this screen."
+                )
+            },
+            confirmButton = {
+                Button(onClick = { pendingLeave = null }) { Text("Stay") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingLeave = null; leave() }) { Text("Leave") }
+            }
+        )
+    }
+
+    // Reached from the dashboard's Emergency button: no chat session and no
+    // existing escalation, so ask for a human straight away rather than
+    // making someone in an emergency tap a second button.
+    LaunchedEffect(escalationId, sessionId) {
+        if (escalationId == null && sessionId == null) {
+            viewModel.requestHumanSupport(null, crisisLevel)
+        }
+    }
+
     LaunchedEffect(status) {
         val current = status
         if (current != null &&
@@ -87,6 +141,12 @@ fun EscalationScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Request Human Support") },
+                navigationIcon = {
+                    GabAILogoButton(
+                        navController,
+                        onClick = { if (requestActive) pendingLeave = leaveToMenu else leaveToMenu() }
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -95,9 +155,14 @@ fun EscalationScreen(
         }
     ) { paddingValues ->
         Column(
+            // Scrollable so the status area and hotline buttons stay reachable on
+            // small screens or large font sizes; the top padding keeps the heading
+            // from sitting flush against the app bar.
             modifier = Modifier
                 .fillMaxSize()
-                .screenContentPadding(paddingValues),
+                .screenContentPadding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(top = Dimens.SpaceM, bottom = Dimens.SpaceL),
             verticalArrangement = Arrangement.spacedBy(Dimens.SpaceM)
         ) {
             Text(
@@ -116,8 +181,6 @@ fun EscalationScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            SafetyResourcesCard()
-
             AnimatedContent(
                 targetState = status,
                 transitionSpec = {
@@ -134,16 +197,29 @@ fun EscalationScreen(
                         waitTimedOut = waitTimedOut,
                         onReturnToDashboard = {
                             navController?.navigate(Routes.DASHBOARD) {
-                                popUpTo(Routes.DASHBOARD) { inclusive = true }
+                                // Chat is the root; drop the escalation screen above it.
+                                popUpTo(Routes.CHATBOT) { inclusive = false }
                             }
                         }
                     )
 
-                    error != null -> Text(
-                        text = error.orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    error != null -> Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceS)) {
+                        Text(
+                            text = error.orEmpty(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        // Only offered when nothing was ever created (a failed request),
+                        // not after a dropped status poll.
+                        if (status == null) {
+                            Button(
+                                onClick = { viewModel.requestHumanSupport(sessionId, crisisLevel) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Try again")
+                            }
+                        }
+                    }
 
                     isRequesting -> RequestingIndicator()
 
@@ -154,14 +230,16 @@ fun EscalationScreen(
                         Text("Request Human Support")
                     }
 
-                    else -> Text(
-                        text = "Start a conversation with GabAI to connect with a staff member, " +
-                            "or use the resources above right now.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Dashboard path: the request is fired by the effect above; this
+                    // covers the first frame before it starts.
+                    else -> RequestingIndicator()
                 }
             }
+
+            // Below the request status, which is the active, time-sensitive part of
+            // this screen; the 911 button and hotlines are still within the first
+            // screenful.
+            SafetyResourcesCard()
         }
     }
 }
@@ -269,7 +347,7 @@ private fun TransferredClinicCard(clinic: Clinic) {
                 onClick = { context.startActivity(clinicDirectionsIntent(clinic)) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null)
+                Icon(painterResource(R.drawable.ic_lucide_footprints), contentDescription = null)
                 Text(" Get Directions", modifier = Modifier.padding(start = Dimens.SpaceXXS))
             }
         }

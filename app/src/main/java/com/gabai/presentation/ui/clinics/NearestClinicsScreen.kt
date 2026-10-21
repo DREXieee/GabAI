@@ -15,17 +15,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -48,6 +43,9 @@ import androidx.navigation.NavController
 import com.gabai.presentation.theme.Dimens
 import com.gabai.presentation.theme.GabAIShapes
 import com.gabai.presentation.theme.screenContentPadding
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
+import com.gabai.presentation.ui.common.GabAILogoButton
 
 private val LOCATION_PERMISSIONS = arrayOf(
     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -92,11 +90,7 @@ fun NearestClinicsScreen(navController: NavController? = null) {
         topBar = {
             TopAppBar(
                 title = { Text("Nearest Clinics", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController?.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                navigationIcon = { GabAILogoButton(navController) }
             )
         }
     ) { paddingValues ->
@@ -192,7 +186,7 @@ private fun ClinicRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Filled.LocationOn,
+                    painter = painterResource(R.drawable.ic_lucide_map_pin),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -214,7 +208,7 @@ private fun ClinicRow(
                 onClick = onGetDirections,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null)
+                Icon(painterResource(R.drawable.ic_lucide_footprints), contentDescription = null)
                 Text(" Get Directions", modifier = Modifier.padding(start = Dimens.SpaceXXS))
             }
         }

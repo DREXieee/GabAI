@@ -18,7 +18,7 @@ data class EscalationStatusUpdate(
 
 interface EscalationRepository {
     /** Patient explicitly asking for a human (no server-side auto-detection involved). */
-    suspend fun requestHumanSupport(sessionId: String, crisisLevel: CrisisLevel): String
+    suspend fun requestHumanSupport(sessionId: String?, crisisLevel: CrisisLevel): String
 
     /** Polls the backend until the escalation resolves; emits every status change along the way. */
     fun observeEscalationStatus(escalationId: String): Flow<EscalationStatusUpdate>

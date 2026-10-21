@@ -13,17 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.MedicalServices
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -36,7 +30,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -48,6 +41,10 @@ import com.gabai.presentation.theme.GabAIShapes
 import com.gabai.presentation.theme.LocalGabAIAccents
 import com.gabai.presentation.theme.screenContentPadding
 import com.gabai.presentation.util.formatFriendlyDateTime
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
+import androidx.annotation.DrawableRes
+import com.gabai.presentation.ui.common.GabAILogoButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,11 +74,7 @@ fun HistoryScreen(navController: NavController? = null) {
         topBar = {
             TopAppBar(
                 title = { Text("History", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController?.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                navigationIcon = { GabAILogoButton(navController) }
             )
         }
     ) { paddingValues ->
@@ -165,7 +158,7 @@ private fun HistoryRow(
 ) {
     val (icon, accentColor, title, subtitle) = when (item) {
         is HistoryItem.ChatSessionItem -> HistoryRowContent(
-            icon = Icons.Filled.Forum,
+            icon = R.drawable.ic_lucide_messages_square,
             accentColor = greenAccent,
             title = "Chat with GabAI",
             subtitle = buildString {
@@ -176,7 +169,7 @@ private fun HistoryRow(
         )
 
         is HistoryItem.EscalationItem -> HistoryRowContent(
-            icon = Icons.Filled.Warning,
+            icon = R.drawable.ic_lucide_triangle_alert,
             accentColor = MaterialTheme.colorScheme.error,
             title = "Support Request",
             subtitle = buildString {
@@ -187,7 +180,7 @@ private fun HistoryRow(
         )
 
         is HistoryItem.ConsultationItem -> HistoryRowContent(
-            icon = Icons.Filled.MedicalServices,
+            icon = R.drawable.ic_lucide_stethoscope,
             accentColor = indigoAccent,
             title = "Consultation with ${item.doctorName}",
             subtitle = "${formatFriendlyDateTime(item.slotStartTime)} • " +
@@ -214,7 +207,7 @@ private fun HistoryRow(
                     .background(accentColor.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = accentColor)
+                Icon(painter = painterResource(icon), contentDescription = null, tint = accentColor)
             }
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXXS)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -225,7 +218,7 @@ private fun HistoryRow(
 }
 
 private data class HistoryRowContent(
-    val icon: ImageVector,
+    @DrawableRes val icon: Int,
     val accentColor: Color,
     val title: String,
     val subtitle: String

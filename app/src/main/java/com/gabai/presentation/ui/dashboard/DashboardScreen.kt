@@ -17,14 +17,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MedicalServices
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,12 +44,12 @@ import com.gabai.presentation.theme.LocalGabAIAccents
 import com.gabai.presentation.theme.WindowWidthSize
 import com.gabai.presentation.theme.rememberWindowWidthSize
 import com.gabai.presentation.theme.screenContentPadding
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import androidx.annotation.DrawableRes
+import androidx.activity.compose.BackHandler
+import android.app.Activity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +65,10 @@ fun DashboardScreen(
         displayName = AuthSessionStore(context).session.first()?.displayName.orEmpty()
     }
     val firstName = displayName.trim().substringBefore(" ").ifBlank { null }
+
+    // Back on the menu leaves the app. Without this it would return to the chat
+    // underneath, whose own back handler reopens the menu -- an endless loop.
+    BackHandler { (context as? Activity)?.finish() }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -111,7 +106,7 @@ fun DashboardScreen(
                                 )
                             }
                         } else {
-                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                            Icon(painterResource(R.drawable.ic_lucide_settings), contentDescription = "Settings")
                         }
                     }
                 }
@@ -150,17 +145,10 @@ fun DashboardScreen(
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(Dimens.SpaceM)
                 ) {
-                    Spacer(modifier = Modifier.height(Dimens.SpaceM))
-
                     // Welcome Header
                     Column(
                         verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXS)
                     ) {
-                        Text(
-                            text = remember { SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(Date()) },
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                         Text(
                             text = if (firstName != null) "${timeOfDayGreeting()}, $firstName!" else "Hello!",
                             style = MaterialTheme.typography.headlineLarge,
@@ -185,9 +173,14 @@ fun DashboardScreen(
                     // column runs small-then-tall, so the two tall tiles sit diagonally
                     // from each other -- this is what makes it read as "interlocking"
                     // rather than just a hero tile beside a stack. Both columns sum to
-                    // the same total height (2 units + 1 unit + the gap between them).
-                    val unit = Dimens.ActionCardHeight + Dimens.SpaceL
-                    val tallUnit = unit * 2 + Dimens.SpaceM
+                    // the same total height (tall tile + small tile + the gap between them).
+                    // The small tiles must fit the badge, title and a two-line description
+                    // without clipping (about 156dp of content), so they get 160dp; the tall
+                    // tiles take whatever keeps both columns equal-height. The wide footer
+                    // tile only needs its badge plus padding, so it stays short.
+                    val smallTile = Dimens.ActionCardHeight + Dimens.SpaceL * 2 + Dimens.SpaceS
+                    val tallTile = smallTile + Dimens.SpaceL * 3
+                    val wideTile = Dimens.ActionCardHeight - Dimens.SpaceXXS
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -200,23 +193,30 @@ fun DashboardScreen(
                             HeroActionCard(
                                 title = "Talk to GabAI",
                                 description = "Your initial consultation with GabAI, any time",
-                                icon = Icons.Filled.Forum,
+                                icon = R.drawable.ic_lucide_messages_square,
                                 accentColor = accents.green,
-                                onClick = { navController?.navigate(Routes.CHATBOT) },
+                                onClick = {
+                                    // Chat is the root screen, so it is normally already
+                                    // underneath this one -- return to it (keeping its
+                                    // state) instead of stacking a second copy.
+                                    if (navController?.popBackStack(Routes.CHATBOT, inclusive = false) != true) {
+                                        navController?.navigate(Routes.CHATBOT)
+                                    }
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(tallUnit),
+                                    .height(tallTile),
                                 index = 0
                             )
                             ActionCard(
                                 title = "History",
                                 description = "View your past sessions",
-                                icon = Icons.Filled.History,
+                                icon = R.drawable.ic_lucide_history,
                                 accentColor = accents.amber,
                                 onClick = { navController?.navigate(Routes.HISTORY) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(unit),
+                                    .height(smallTile),
                                 index = 3
                             )
                         }
@@ -225,25 +225,25 @@ fun DashboardScreen(
                             verticalArrangement = Arrangement.spacedBy(Dimens.SpaceM)
                         ) {
                             ActionCard(
-                                title = "Real-Time Consultation",
+                                title = "Consultations",
                                 description = "Book a live video visit with a professional",
-                                icon = Icons.Filled.MedicalServices,
+                                icon = R.drawable.ic_lucide_stethoscope,
                                 accentColor = accents.indigo,
                                 onClick = { navController?.navigate(Routes.CONSULTATION) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(unit),
+                                    .height(smallTile),
                                 index = 1
                             )
                             HeroActionCard(
-                                title = "Daily Wellness",
-                                description = "Track your mood and wellness",
-                                icon = Icons.Filled.Spa,
+                                title = "Wellness for Betterness",
+                                description = "Let's calm yourself",
+                                icon = R.drawable.ic_lucide_flower_2,
                                 accentColor = accents.pink,
                                 onClick = { navController?.navigate(Routes.WELLNESS) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(tallUnit),
+                                    .height(tallTile),
                                 index = 2
                             )
                         }
@@ -255,12 +255,12 @@ fun DashboardScreen(
                     WideActionCard(
                         title = "Nearest Clinics",
                         description = "Get referred to a nearby participating clinic",
-                        icon = Icons.Filled.LocationOn,
+                        icon = R.drawable.ic_lucide_map_pin,
                         accentColor = accents.green,
                         onClick = { navController?.navigate(Routes.NEAREST_CLINICS) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(unit),
+                            .height(wideTile),
                         index = 4
                     )
 
@@ -279,8 +279,10 @@ fun DashboardScreen(
                 EmergencySupportBanner(
                     onClick = {
                         // Reached from the dashboard, not an active chat -- no session/escalation
-                        // to reference yet, so EscalationScreen falls back to a fresh manual request.
-                        navController?.navigate(Routes.escalationRoute(CrisisLevel.NONE, escalationId = null, sessionId = null))
+                        // to reference yet, so EscalationScreen immediately files a fresh request
+                        // for a real staff member. SEVERE because the patient pressed Emergency
+                        // themselves, so staff see it as urgent.
+                        navController?.navigate(Routes.escalationRoute(CrisisLevel.SEVERE, escalationId = null, sessionId = null))
                     },
                     modifier = Modifier
                         .widthIn(max = readingMaxWidth)
@@ -323,7 +325,7 @@ private fun EmergencySupportBanner(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Phone,
+                painter = painterResource(R.drawable.ic_lucide_phone),
                 contentDescription = "Emergency",
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(Dimens.IconSizeL)
@@ -339,7 +341,7 @@ private fun EmergencySupportBanner(
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
                 Text(
-                    text = "If you are in an emergency, call 911 immediately",
+                    text = "Tap to reach a real person right now",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
@@ -361,7 +363,7 @@ private fun timeOfDayGreeting(): String {
 private fun ActionCard(
     title: String,
     description: String,
-    icon: ImageVector,
+    @DrawableRes icon: Int,
     accentColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -415,7 +417,7 @@ private fun ActionCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = icon,
+                        painter = painterResource(icon),
                         contentDescription = title,
                         tint = Color.White,
                         modifier = Modifier.size(Dimens.IconSizeM)
@@ -433,6 +435,10 @@ private fun ActionCard(
                         text = description,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.85f),
+                        // Always reserve two lines so tiles side by side (e.g. one-line
+                        // "History" vs two-line "Consultations") keep their titles the
+                        // same distance from the icon.
+                        minLines = 2,
                         maxLines = 2
                     )
                 }
@@ -448,7 +454,7 @@ private fun ActionCard(
 private fun HeroActionCard(
     title: String,
     description: String,
-    icon: ImageVector,
+    @DrawableRes icon: Int,
     accentColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -497,7 +503,7 @@ private fun HeroActionCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = icon,
+                        painter = painterResource(icon),
                         contentDescription = title,
                         tint = Color.White,
                         modifier = Modifier.size(Dimens.IconSizeL)
@@ -530,7 +536,7 @@ private fun HeroActionCard(
 private fun WideActionCard(
     title: String,
     description: String,
-    icon: ImageVector,
+    @DrawableRes icon: Int,
     accentColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -580,7 +586,7 @@ private fun WideActionCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = icon,
+                        painter = painterResource(icon),
                         contentDescription = title,
                         tint = Color.White,
                         modifier = Modifier.size(Dimens.IconSizeM)

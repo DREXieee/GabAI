@@ -1,9 +1,6 @@
 package com.gabai.presentation.ui.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +18,9 @@ import com.gabai.data.local.repository.AuthSessionStore
 import com.gabai.presentation.theme.Dimens
 import com.gabai.presentation.theme.screenContentPadding
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
+import com.gabai.presentation.ui.common.GabAILogoButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,11 +45,7 @@ fun SettingsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Settings", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController?.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                navigationIcon = { GabAILogoButton(navController) }
             )
         }
     ) { paddingValues ->
@@ -101,7 +97,7 @@ fun SettingsScreen(
                 )
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                    painter = painterResource(R.drawable.ic_lucide_log_out),
                     contentDescription = null,
                     modifier = Modifier.size(Dimens.IconSizeM)
                 )

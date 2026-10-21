@@ -26,13 +26,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -60,6 +53,10 @@ import com.gabai.presentation.ui.common.SafetyDisclaimerLine
 import com.gabai.presentation.ui.common.SafetyResourcesCard
 import kotlinx.coroutines.delay
 import java.io.File
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.activity.compose.BackHandler
 
 // Auto-stop tuning for the mic button's silence detection -- a panic-attack
 // user shouldn't have to remember to tap stop. getMaxAmplitude()'s scale
@@ -234,28 +231,43 @@ fun ChatbotScreen(
         }
     }
 
+    // Chat is the root screen, so the system back button opens the menu
+    // (like tapping the logo) instead of exiting; the dashboard's own back
+    // handler is what leaves the app.
+    BackHandler {
+        navController?.navigate(Routes.DASHBOARD) { launchSingleTop = true }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Same logo + name as the dashboard's top bar; tapping it
+                    // opens that dashboard (the menu). Chat is the root screen,
+                    // so there is deliberately no back arrow here.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(Dimens.SpaceXS))
+                            .clickable(
+                                onClickLabel = "Open menu",
+                                role = Role.Button,
+                                onClick = {
+                                    navController?.navigate(Routes.DASHBOARD) { launchSingleTop = true }
+                                }
+                            )
+                            .padding(vertical = Dimens.SpaceXXS, horizontal = Dimens.SpaceXXS)
+                    ) {
                         Image(
                             painter = painterResource(R.drawable.logo_gabai),
                             contentDescription = null,
-                            modifier = Modifier.size(Dimens.SpaceL)
+                            modifier = Modifier.size(Dimens.IconBadgeSize - Dimens.SpaceM)
                         )
                         Spacer(modifier = Modifier.width(Dimens.SpaceXS))
                         Text(
-                            text = "GabAI Assistant",
+                            text = "GabAI",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController?.navigateUp() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
                         )
                     }
                 },
@@ -388,10 +400,12 @@ fun ChatbotScreen(
                     contentPadding = PaddingValues(horizontal = Dimens.SpaceS, vertical = Dimens.SpaceXXS)
                 ) {
                     Icon(
-                        imageVector = if (speechPlaybackState == SpeechPlaybackState.PLAYING)
-                            Icons.Filled.Pause
+                        painter = painterResource(
+                            if (speechPlaybackState == SpeechPlaybackState.PLAYING)
+                            R.drawable.ic_lucide_pause
                         else
-                            Icons.Filled.PlayArrow,
+                            R.drawable.ic_lucide_play
+                        ),
                         contentDescription = null,
                         modifier = Modifier.size(Dimens.SpaceM)
                     )
@@ -446,7 +460,7 @@ fun ChatbotScreen(
                         )
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        painter = painterResource(R.drawable.ic_lucide_send_horizontal),
                         contentDescription = "Send",
                         tint = if (messageText.isNotBlank())
                             MaterialTheme.colorScheme.onPrimary
@@ -485,7 +499,7 @@ fun ChatbotScreen(
                         )
                 ) {
                     Icon(
-                        imageVector = if (isRecording) Icons.Filled.Stop else Icons.Filled.Mic,
+                        painter = painterResource(if (isRecording) R.drawable.ic_lucide_square else R.drawable.ic_lucide_mic),
                         contentDescription = if (isRecording) "Stop recording" else "Record a voice message",
                         tint = if (isRecording)
                             MaterialTheme.colorScheme.onError

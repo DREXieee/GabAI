@@ -6,8 +6,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +19,8 @@ import com.gabai.data.remote.api.RetrofitClient
 import com.gabai.data.remote.models.ForgotPasswordRequest
 import com.gabai.presentation.theme.*
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
 
 @Composable
 fun ForgotPasswordScreen(
@@ -60,7 +60,7 @@ fun ForgotPasswordScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.MailOutline,
+                        painter = painterResource(R.drawable.ic_lucide_mail),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(Dimens.IconSizeL)

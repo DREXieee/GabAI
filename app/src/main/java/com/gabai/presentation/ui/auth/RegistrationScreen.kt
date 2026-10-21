@@ -6,10 +6,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +26,8 @@ import com.gabai.data.remote.models.RegisterRequest
 import com.gabai.presentation.theme.*
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
 
 @Composable
 fun RegistrationScreen(
@@ -104,7 +102,7 @@ fun RegistrationScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Favorite,
+                        painter = painterResource(R.drawable.ic_lucide_heart),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(Dimens.IconSizeL)
@@ -172,7 +170,7 @@ fun RegistrationScreen(
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
-                                imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                painter = painterResource(if (passwordVisible) R.drawable.ic_lucide_eye_off else R.drawable.ic_lucide_eye),
                                 contentDescription = if (passwordVisible) "Hide password" else "Show password"
                             )
                         }

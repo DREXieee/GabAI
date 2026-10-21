@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +18,8 @@ import com.gabai.data.remote.models.UpdateLocationRequest
 import com.gabai.presentation.theme.*
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import androidx.compose.ui.res.painterResource
+import com.gabai.R
 
 // Google sign-in has no form step to collect province/city (unlike the
 // regular registration form), so first-time Google users land here once,
@@ -63,7 +63,7 @@ fun CompleteProfileScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.LocationOn,
+                        painter = painterResource(R.drawable.ic_lucide_map_pin),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(Dimens.IconSizeL)
