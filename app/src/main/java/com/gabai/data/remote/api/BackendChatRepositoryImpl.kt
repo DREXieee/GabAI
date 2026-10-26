@@ -24,7 +24,7 @@ class BackendChatRepositoryImpl(private val apiService: ApiService) : ChatReposi
     private var sessionId: String? = null
 
     override suspend fun sendMessage(userInput: String): CrisisAssessment {
-        if (LocalCrisisKeywordDetector.detect(userInput.lowercase())) {
+        if (LocalCrisisKeywordDetector.detect(userInput)) {
             return CrisisAssessment(
                 ReplyLanguage.inLanguageOf(userInput, ReplyLanguage.severeFallbackReply),
                 CrisisLevel.SEVERE,
