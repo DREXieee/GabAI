@@ -13,10 +13,6 @@ import kotlinx.coroutines.CancellationException
 
 private const val TAG = "BackendChatRepository"
 
-private val networkFallbackReply =
-    "Thank you for sharing that with me. I'm here to listen and support you. " +
-        "Can you tell me more about how you're feeling?"
-
 /**
  * Replaces GeminiChatRepositoryImpl: the Claude call and its structured
  * crisis-classification now live server-side (see gabai-backend), so the API
@@ -29,11 +25,11 @@ class BackendChatRepositoryImpl(private val apiService: ApiService) : ChatReposi
 
     override suspend fun sendMessage(userInput: String): CrisisAssessment {
         if (LocalCrisisKeywordDetector.detect(userInput.lowercase())) {
-            val severeFallbackReply =
-                "I'm really concerned about what you're sharing. Your safety matters deeply. " +
-                    "Please reach out to a professional who can support you through this. " +
-                    "You don't have to go through this alone."
-            return CrisisAssessment(severeFallbackReply, CrisisLevel.SEVERE, AssessmentSource.LOCAL_KEYWORD)
+            return CrisisAssessment(
+                ReplyLanguage.inLanguageOf(userInput, ReplyLanguage.severeFallbackReply),
+                CrisisLevel.SEVERE,
+                AssessmentSource.LOCAL_KEYWORD
+            )
         }
 
         return try {
@@ -51,7 +47,11 @@ class BackendChatRepositoryImpl(private val apiService: ApiService) : ChatReposi
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "Backend chat call failed, falling back to canned response", e)
-            CrisisAssessment(networkFallbackReply, CrisisLevel.NONE, AssessmentSource.FALLBACK)
+            CrisisAssessment(
+                ReplyLanguage.inLanguageOf(userInput, ReplyLanguage.networkFallbackReply),
+                CrisisLevel.NONE,
+                AssessmentSource.FALLBACK
+            )
         }
     }
 
