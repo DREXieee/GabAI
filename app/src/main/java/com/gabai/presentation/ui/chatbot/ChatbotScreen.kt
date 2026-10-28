@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -54,8 +55,13 @@ import com.gabai.presentation.theme.PillShape
 import com.gabai.presentation.theme.WindowWidthSize
 import com.gabai.presentation.theme.rememberWindowWidthSize
 import com.gabai.presentation.theme.screenContentPadding
+import com.gabai.presentation.ui.common.CrisisActionBar
 import com.gabai.presentation.ui.common.SafetyDisclaimerLine
 import com.gabai.presentation.ui.common.SafetyResourcesCard
+import com.gabai.presentation.util.rememberReducedMotion
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.delay
 import java.io.File
 import androidx.compose.foundation.clickable
@@ -98,6 +104,7 @@ fun ChatbotScreen(
     val isTranscribing by viewModel.isTranscribing.collectAsState()
     val voiceError by viewModel.voiceError.collectAsState()
     val listState = rememberLazyListState()
+    var showHotlines by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
     var isRecording by remember { mutableStateOf(false) }
@@ -236,6 +243,14 @@ fun ChatbotScreen(
         }
     }
 
+    // When the chat turns SEVERE, drop the keyboard so the reply and the crisis
+    // bar are in view: with it up (and a large font) the reply gets one line.
+    // Sending already cleared the input, so nothing typed is lost.
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(crisisLevel) {
+        if (crisisLevel == CrisisLevel.SEVERE) focusManager.clearFocus()
+    }
+
     // Chat is the root screen, so the system back button opens the menu
     // (like tapping the logo) instead of exiting; the dashboard's own back
     // handler is what leaves the app.
@@ -331,13 +346,23 @@ fun ChatbotScreen(
                     expandVertically(tween(400, easing = FastOutSlowInEasing)),
                 exit = fadeOut(tween(250)) + shrinkVertically(tween(250))
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = Dimens.SpaceXS),
-                    verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXS)
-                ) {
+                // SEVERE pins only the compact action bar, so the reply above stays
+                // readable; the full hotline card opens in a sheet from it.
+                if (crisisLevel == CrisisLevel.SEVERE) {
+                    CrisisActionBar(
+                        onSpeakToProfessional = {
+                            navController?.navigate(
+                                Routes.escalationRoute(crisisLevel, escalationId, sessionId)
+                            )
+                        },
+                        onShowHotlines = { showHotlines = true },
+                        modifier = Modifier.padding(vertical = Dimens.SpaceXS)
+                    )
+                } else {
                     Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = Dimens.SpaceXS),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer
                         )
@@ -353,10 +378,7 @@ fun ChatbotScreen(
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
                             Text(
-                                text = if (crisisLevel == CrisisLevel.SEVERE)
-                                    "It sounds like you're going through a very difficult time. Please consider speaking with a mental health professional."
-                                else
-                                    "It sounds like things have been really hard lately. Would you like some support resources?",
+                                text = "It sounds like things have been really hard lately. Would you like some support resources?",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -375,10 +397,17 @@ fun ChatbotScreen(
                             }
                         }
                     }
-                    // Full hotline card reserved for SEVERE; MODERATE stays softer/less alarming.
-                    if (crisisLevel == CrisisLevel.SEVERE) {
-                        SafetyResourcesCard()
-                    }
+                }
+            }
+
+            if (showHotlines) {
+                ModalBottomSheet(onDismissRequest = { showHotlines = false }) {
+                    SafetyResourcesCard(
+                        modifier = Modifier
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = Dimens.SpaceM)
+                            .padding(bottom = Dimens.SpaceL)
+                    )
                 }
             }
 
@@ -597,21 +626,25 @@ private fun ReplyMarkdown(text: String, modifier: Modifier = Modifier) {
 
 @Composable
 private fun TypingIndicator(modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "typingIndicator")
+    // Static dots when system animations are off.
+    val transition = if (rememberReducedMotion()) null else rememberInfiniteTransition(label = "typingIndicator")
     Row(
         modifier = modifier.padding(vertical = Dimens.SpaceXXS),
         horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXXS)
     ) {
         repeat(3) { index ->
-            val alpha by transition.animateFloat(
-                initialValue = 0.3f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(600, delayMillis = index * 150),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "typingDot$index"
-            )
+            val alpha = if (transition == null) 0.6f else {
+                val animated by transition.animateFloat(
+                    initialValue = 0.3f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(600, delayMillis = index * 150),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "typingDot$index"
+                )
+                animated
+            }
             Box(
                 modifier = Modifier
                     .size(Dimens.TypingDotSize)
