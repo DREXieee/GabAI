@@ -173,6 +173,16 @@ private fun ConsultationCard(consultation: ConsultationSummary, onClick: () -> U
 @Composable
 private fun StatusBadge(status: RemoteConsultationStatus) {
     val (label, containerColor, contentColor) = when (status) {
+        RemoteConsultationStatus.REQUESTED -> Triple(
+            "Waiting for confirmation",
+            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.onSurface
+        )
+        RemoteConsultationStatus.DECLINED -> Triple(
+            "Declined",
+            MaterialTheme.colorScheme.errorContainer,
+            MaterialTheme.colorScheme.onErrorContainer
+        )
         RemoteConsultationStatus.CONFIRMED -> Triple(
             "Confirmed",
             MaterialTheme.colorScheme.primaryContainer,

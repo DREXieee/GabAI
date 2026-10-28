@@ -58,6 +58,7 @@ import com.gabai.presentation.theme.screenContentPadding
 import com.gabai.presentation.ui.common.CrisisActionBar
 import com.gabai.presentation.ui.common.SafetyDisclaimerLine
 import com.gabai.presentation.ui.common.SafetyResourcesCard
+import com.gabai.presentation.ui.wellness.WellnessSuggestionCard
 import com.gabai.presentation.util.rememberReducedMotion
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -236,10 +237,19 @@ fun ChatbotScreen(
         onDispose { speechPlayer?.release() }
     }
 
-    // Auto-scroll to bottom when new messages arrive
-    LaunchedEffect(messages.size) {
+    // "Suggested for you" goes under the latest GabAI reply only, so earlier
+    // suggestions don't pile up -- and never for SEVERE, where the crisis bar
+    // and hotlines are the only next step shown.
+    val latestMessage = messages.lastOrNull()
+    val suggestedEmotion = latestMessage
+        ?.takeIf { !it.isUser && it.crisisLevel != CrisisLevel.SEVERE }
+        ?.emotion
+        ?.takeIf { it.isSuggestible }
+
+    // Auto-scroll to bottom when new messages arrive (including the suggestion card)
+    LaunchedEffect(messages.size, suggestedEmotion) {
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+            listState.animateScrollToItem(messages.size - 1 + if (suggestedEmotion != null) 1 else 0)
         }
     }
 
@@ -327,6 +337,16 @@ fun ChatbotScreen(
                             placementSpec = tween(300)
                         )
                     )
+                }
+                if (suggestedEmotion != null && latestMessage != null) {
+                    item(key = "suggestion-${latestMessage.id}") {
+                        WellnessSuggestionCard(
+                            emotion = suggestedEmotion,
+                            onOpen = { itemId -> navController?.navigate(Routes.wellnessDetailRoute(itemId)) },
+                            onBookConsultation = { navController?.navigate(Routes.CONSULTATION_BOOKING) },
+                            modifier = Modifier.animateItem(fadeInSpec = tween(300), placementSpec = tween(300))
+                        )
+                    }
                 }
             }
 

@@ -5,6 +5,7 @@ import com.gabai.data.remote.models.BookSlotRequest
 import com.gabai.data.remote.models.CancelConsultationRequest
 import com.gabai.data.remote.models.ChatMessageRequest
 import com.gabai.data.remote.models.ChatMessageResponse
+import com.gabai.data.remote.models.EmotionSummaryDto
 import com.gabai.data.remote.models.ChatSessionDetailDto
 import com.gabai.data.remote.models.ClinicsResponse
 import com.gabai.data.remote.models.ConsultationDto
@@ -58,6 +59,9 @@ interface ApiService {
 
     @GET("api/chat/sessions/{id}")
     suspend fun getChatSessionDetail(@Path("id") id: String): ChatSessionDetailDto
+
+    @GET("api/chat/emotions")
+    suspend fun getEmotionSummary(): EmotionSummaryDto
 
     @POST("api/voice/transcribe")
     suspend fun transcribeVoice(@Body request: TranscribeVoiceRequest): TranscribeVoiceResponse

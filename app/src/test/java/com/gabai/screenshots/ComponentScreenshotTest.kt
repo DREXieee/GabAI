@@ -24,7 +24,9 @@ import com.gabai.presentation.ui.chatbot.ChatBubble
 import com.gabai.presentation.ui.common.CrisisActionBar
 import com.gabai.presentation.ui.common.SafetyResourcesCard
 import com.gabai.presentation.ui.common.SkeletonList
+import com.gabai.domain.model.Emotion
 import com.gabai.presentation.ui.wellness.BreathingGuide
+import com.gabai.presentation.ui.wellness.WellnessSuggestionCard
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -98,6 +100,14 @@ class ComponentScreenshotTest(private val darkTheme: Boolean) {
                     isUser = false
                 )
             )
+        }
+    }
+
+    @Test
+    fun wellnessSuggestionCard() = capture("wellness_suggestion_card") {
+        Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXS)) {
+            WellnessSuggestionCard(emotion = Emotion.ANXIETY, onOpen = {}, onBookConsultation = {})
+            WellnessSuggestionCard(emotion = Emotion.DEPRESSION, onOpen = {}, onBookConsultation = {})
         }
     }
 

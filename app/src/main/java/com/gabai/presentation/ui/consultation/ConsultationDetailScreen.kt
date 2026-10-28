@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,7 +83,8 @@ fun ConsultationDetailScreen(consultationId: String, navController: NavControlle
                 status != null -> DetailContent(
                     status = status!!,
                     isCancelling = isCancelling,
-                    onCancel = { viewModel.cancel(consultationId) }
+                    onCancel = { viewModel.cancel(consultationId) },
+                    onBookAnother = { navController?.navigate(Routes.CONSULTATION_BOOKING) }
                 )
 
                 error != null -> Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
@@ -99,7 +101,8 @@ fun ConsultationDetailScreen(consultationId: String, navController: NavControlle
 private fun DetailContent(
     status: ConsultationStatusUpdate,
     isCancelling: Boolean,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onBookAnother: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceM)) {
         Card(
@@ -131,9 +134,25 @@ private fun DetailContent(
             }
         }
 
-        if (status.status == RemoteConsultationStatus.CONFIRMED) {
+        if (status.status == RemoteConsultationStatus.DECLINED) {
             Text(
-                text = "You'll be connected automatically here once your doctor starts the call.",
+                text = "${status.doctorName} couldn't take this time.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Button(onClick = onBookAnother, modifier = Modifier.fillMaxWidth()) {
+                Text("Choose Another Time")
+            }
+        }
+
+        val isRequest = status.status == RemoteConsultationStatus.REQUESTED
+        if (isRequest || status.status == RemoteConsultationStatus.CONFIRMED) {
+            Text(
+                text = if (isRequest) {
+                    "Your request was sent. ${status.doctorName} will confirm it, and this screen updates on its own."
+                } else {
+                    "You'll be connected automatically here once your doctor starts the call."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -145,7 +164,7 @@ private fun DetailContent(
                 if (isCancelling) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 } else {
-                    Text("Cancel Consultation")
+                    Text(if (isRequest) "Withdraw Request" else "Cancel Consultation")
                 }
             }
         }
@@ -153,7 +172,9 @@ private fun DetailContent(
 }
 
 private fun statusLabel(status: RemoteConsultationStatus): String = when (status) {
+    RemoteConsultationStatus.REQUESTED -> "Waiting for confirmation"
     RemoteConsultationStatus.CONFIRMED -> "Confirmed"
+    RemoteConsultationStatus.DECLINED -> "Declined"
     RemoteConsultationStatus.CANCELLED -> "Cancelled"
     RemoteConsultationStatus.COMPLETED -> "Completed"
 }

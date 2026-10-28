@@ -12,7 +12,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 private const val POLL_INTERVAL_MS = 5000L
-private val TERMINAL_STATUSES = setOf(RemoteConsultationStatus.CANCELLED, RemoteConsultationStatus.COMPLETED)
+// A REQUESTED consultation keeps being polled, so the doctor's answer shows up live.
+private val TERMINAL_STATUSES = setOf(
+    RemoteConsultationStatus.DECLINED,
+    RemoteConsultationStatus.CANCELLED,
+    RemoteConsultationStatus.COMPLETED
+)
 
 class RemoteConsultationRepositoryImpl(private val apiService: ApiService) : ConsultationRepository {
 
