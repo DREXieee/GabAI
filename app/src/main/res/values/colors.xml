@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash screen background; mirrors LightBackground in presentation/theme/Color.kt. -->
+    <color name="splash_background">#FFFFFF</color>
+</resources>

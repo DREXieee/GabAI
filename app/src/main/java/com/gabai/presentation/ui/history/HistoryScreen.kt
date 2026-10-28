@@ -45,6 +45,7 @@ import androidx.compose.ui.res.painterResource
 import com.gabai.R
 import androidx.annotation.DrawableRes
 import com.gabai.presentation.ui.common.GabAILogoButton
+import com.gabai.presentation.ui.common.SkeletonList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,10 +85,7 @@ fun HistoryScreen(navController: NavController? = null) {
                 .screenContentPadding(paddingValues)
         ) {
             when {
-                isLoading && items.isEmpty() -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
+                isLoading && items.isEmpty() -> SkeletonList(loadingDescription = "Loading history")
 
                 error != null && items.isEmpty() -> Box(
                     modifier = Modifier.fillMaxSize(),

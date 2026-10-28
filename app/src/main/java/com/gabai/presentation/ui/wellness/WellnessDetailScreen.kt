@@ -91,6 +91,10 @@ fun WellnessDetailScreen(itemId: String, navController: NavController? = null) {
                 }
             }
 
+            item.breathPattern?.let { pattern ->
+                BreathingGuide(pattern = pattern, modifier = Modifier.fillMaxWidth())
+            }
+
             Text(
                 text = item.body,
                 style = MaterialTheme.typography.bodyLarge,

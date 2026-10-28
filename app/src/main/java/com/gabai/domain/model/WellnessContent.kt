@@ -13,7 +13,17 @@ data class WellnessItem(
     val summary: String,
     val body: String,
     val durationMinutes: Int? = null,
-    val steps: List<String> = emptyList()
+    val steps: List<String> = emptyList(),
+    // Paces the breathing guide on the detail screen; null for non-breathing items.
+    val breathPattern: BreathPattern? = null
+)
+
+// Seconds for each phase of one breath; a hold of 0 skips that hold.
+data class BreathPattern(
+    val inhale: Int,
+    val holdIn: Int = 0,
+    val exhale: Int,
+    val holdOut: Int = 0
 )
 
 // Static, curated, read-only content -- no backend needed. Ships with app
@@ -36,7 +46,8 @@ object WellnessLibrary {
                 "Hold your breath gently for 4 counts.",
                 "Breathe out slowly through your mouth for 4 counts.",
                 "Hold again for 4 counts, then repeat for a few rounds."
-            )
+            ),
+            breathPattern = BreathPattern(inhale = 4, holdIn = 4, exhale = 4, holdOut = 4)
         ),
         WellnessItem(
             id = "478-breathing",
@@ -53,7 +64,8 @@ object WellnessLibrary {
                 "Hold your breath for 7 counts.",
                 "Exhale slowly and completely through your mouth for 8 counts.",
                 "Repeat the cycle 3-4 times."
-            )
+            ),
+            breathPattern = BreathPattern(inhale = 4, holdIn = 7, exhale = 8)
         ),
         WellnessItem(
             id = "belly-breathing",
@@ -70,7 +82,8 @@ object WellnessLibrary {
                 "Breathe in slowly through your nose, letting your belly (not your chest) rise.",
                 "Breathe out slowly through pursed lips, feeling your belly fall.",
                 "Continue for several minutes, keeping the breath slow and even."
-            )
+            ),
+            breathPattern = BreathPattern(inhale = 5, exhale = 5)
         ),
         WellnessItem(
             id = "grounding-54321",

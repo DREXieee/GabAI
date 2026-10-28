@@ -46,6 +46,30 @@ import com.gabai.presentation.util.formatFriendlyTime
 import androidx.compose.ui.res.painterResource
 import com.gabai.R
 import com.gabai.presentation.ui.common.GabAILogoButton
+import com.gabai.presentation.util.localDateOf
+import com.gabai.presentation.util.rememberReducedMotion
+import com.kizitonwose.calendar.compose.CalendarState
+import com.kizitonwose.calendar.compose.HorizontalCalendar
+import com.kizitonwose.calendar.compose.rememberCalendarState
+import com.kizitonwose.calendar.core.CalendarDay
+import com.kizitonwose.calendar.core.DayPosition
+import com.kizitonwose.calendar.core.daysOfWeek
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.launch
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle as DateTextStyle
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -172,33 +196,174 @@ private fun DoctorStep(slots: List<AvailableSlot>, onDoctorSelected: (String) ->
     }
 }
 
+// A month calendar of the chosen doctor's open days (days with no slot are
+// disabled), with the picked day's times listed underneath.
 @Composable
 private fun TimeStep(slots: List<AvailableSlot>, onSlotSelected: (AvailableSlot) -> Unit) {
-    val grouped = remember(slots) { slots.groupBy { formatFriendlyDate(it.startTime) } }
+    val slotsByDate = remember(slots) {
+        slots.mapNotNull { slot -> localDateOf(slot.startTime)?.let { it to slot } }
+            .groupBy({ it.first }, { it.second })
+            .toSortedMap()
+    }
+    if (slotsByDate.isEmpty()) return
+
+    var selectedDate by remember(slotsByDate) { mutableStateOf(slotsByDate.firstKey()) }
+    val daysOfWeek = remember { daysOfWeek() }
+    val calendarState = rememberCalendarState(
+        startMonth = YearMonth.from(slotsByDate.firstKey()),
+        endMonth = YearMonth.from(slotsByDate.lastKey()),
+        firstVisibleMonth = YearMonth.from(slotsByDate.firstKey()),
+        firstDayOfWeek = daysOfWeek.first()
+    )
+    val dayTimes = slotsByDate[selectedDate].orEmpty()
+
     LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceS)) {
-        grouped.forEach { (dateLabel, dateSlots) ->
-            item {
-                Text(
-                    text = dateLabel,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = Dimens.SpaceS, bottom = Dimens.SpaceXXS)
+        item {
+            Column {
+                MonthHeader(calendarState)
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    daysOfWeek.forEach { dayOfWeek ->
+                        Text(
+                            text = dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.getDefault()),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                HorizontalCalendar(
+                    state = calendarState,
+                    dayContent = { day ->
+                        CalendarDayCell(
+                            day = day,
+                            openTimes = slotsByDate[day.date]?.size ?: 0,
+                            isSelected = day.date == selectedDate,
+                            onClick = { selectedDate = day.date }
+                        )
+                    }
                 )
             }
-            items(dateSlots, key = { it.id }) { slot ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { onSlotSelected(slot) },
-                    shape = GabAIShapes.medium
-                ) {
-                    Text(
-                        text = "${formatFriendlyTime(slot.startTime)} - ${formatFriendlyTime(slot.endTime)}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(Dimens.SpaceM)
-                    )
-                }
+        }
+        item {
+            Text(
+                text = "Available times · ${selectedDate.format(SelectedDateFormat)}",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = Dimens.SpaceS, bottom = Dimens.SpaceXXS)
+            )
+        }
+        items(dayTimes, key = { it.id }) { slot ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { onSlotSelected(slot) },
+                shape = GabAIShapes.medium
+            ) {
+                Text(
+                    text = "${formatFriendlyTime(slot.startTime)} - ${formatFriendlyTime(slot.endTime)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(Dimens.SpaceM)
+                )
             }
         }
+    }
+}
+
+private val SelectedDateFormat = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())
+private val DayDescriptionFormat = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault())
+
+@Composable
+private fun MonthHeader(calendarState: CalendarState) {
+    val reducedMotion = rememberReducedMotion()
+    val coroutineScope = rememberCoroutineScope()
+    val visibleMonth = calendarState.firstVisibleMonth.yearMonth
+    val spansMonths = calendarState.startMonth != calendarState.endMonth
+
+    fun goTo(month: YearMonth) {
+        coroutineScope.launch {
+            if (reducedMotion) calendarState.scrollToMonth(month) else calendarState.animateScrollToMonth(month)
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (spansMonths) {
+            IconButton(
+                onClick = { goTo(visibleMonth.minusMonths(1)) },
+                enabled = visibleMonth > calendarState.startMonth
+            ) {
+                Icon(painterResource(R.drawable.ic_lucide_chevron_left), contentDescription = "Previous month")
+            }
+        }
+        Text(
+            text = visibleMonth.format(MonthTitleFormat),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = Dimens.SpaceXS)
+        )
+        if (spansMonths) {
+            IconButton(
+                onClick = { goTo(visibleMonth.plusMonths(1)) },
+                enabled = visibleMonth < calendarState.endMonth
+            ) {
+                Icon(painterResource(R.drawable.ic_lucide_chevron_right), contentDescription = "Next month")
+            }
+        }
+    }
+}
+
+private val MonthTitleFormat = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+
+@Composable
+private fun CalendarDayCell(
+    day: CalendarDay,
+    openTimes: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    // In/out-dates of the neighbouring months stay blank.
+    if (day.position != DayPosition.MonthDate) {
+        Box(modifier = Modifier.aspectRatio(1f))
+        return
+    }
+    val isOpen = openTimes > 0
+    val description = day.date.format(DayDescriptionFormat) +
+        if (isOpen) ", $openTimes open ${if (openTimes == 1) "time" else "times"}" else ", no open times"
+
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .padding(Dimens.SpaceXXS)
+            .clip(CircleShape)
+            .then(
+                when {
+                    isSelected -> Modifier.background(MaterialTheme.colorScheme.primary)
+                    isOpen -> Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    else -> Modifier
+                }
+            )
+            .clickable(enabled = isOpen, onClick = onClick)
+            .semantics {
+                contentDescription = description
+                selected = isSelected
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = day.date.dayOfMonth.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (isOpen) FontWeight.SemiBold else FontWeight.Normal,
+            color = when {
+                isSelected -> MaterialTheme.colorScheme.onPrimary
+                isOpen -> MaterialTheme.colorScheme.onSurface
+                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            }
+        )
     }
 }
 

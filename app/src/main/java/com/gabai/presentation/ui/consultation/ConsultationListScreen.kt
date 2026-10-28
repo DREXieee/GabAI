@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +42,7 @@ import com.gabai.presentation.util.formatFriendlyDateTime
 import androidx.compose.ui.res.painterResource
 import com.gabai.R
 import com.gabai.presentation.ui.common.GabAILogoButton
+import com.gabai.presentation.ui.common.SkeletonList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,10 +77,11 @@ fun ConsultationListScreen(navController: NavController? = null) {
                 .screenContentPadding(paddingValues)
         ) {
             when {
-                isLoading && consultations.isEmpty() -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
+                isLoading && consultations.isEmpty() -> SkeletonList(
+                    loadingDescription = "Loading consultations",
+                    rowCount = 4,
+                    showLeadingBadge = false
+                )
 
                 error != null && consultations.isEmpty() -> Box(
                     modifier = Modifier.fillMaxSize(),

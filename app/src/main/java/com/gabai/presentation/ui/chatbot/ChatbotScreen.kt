@@ -39,6 +39,11 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.gabai.R
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.m3.markdownColor
+import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.markdownAnimations
+import com.mikepenz.markdown.model.rememberMarkdownState
 import com.gabai.data.remote.api.BackendChatRepositoryImpl
 import com.gabai.data.remote.api.RetrofitClient
 import com.gabai.domain.model.ChatMessage
@@ -548,16 +553,46 @@ fun ChatBubble(message: ChatMessage, modifier: Modifier = Modifier) {
                 )
                 .padding(Dimens.SpaceS)
         ) {
-            Text(
-                text = message.text,
-                color = if (message.isUser)
-                    MaterialTheme.colorScheme.onPrimary
-                else
-                    MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            if (message.isUser) {
+                Text(
+                    text = message.text,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                ReplyMarkdown(message.text)
+            }
         }
     }
+}
+
+// GabAI's replies can carry markdown (**bold**, "-" lists). The backend prompt
+// now asks for plain text, but replies already saved in History don't follow it.
+@Composable
+private fun ReplyMarkdown(text: String, modifier: Modifier = Modifier) {
+    val body = MaterialTheme.typography.bodyMedium
+    Markdown(
+        // Parsed synchronously: these are short, and the default background
+        // parse would draw an empty bubble for a frame and then jump in size.
+        markdownState = rememberMarkdownState(text, immediate = true),
+        colors = markdownColor(text = MaterialTheme.colorScheme.onSurface),
+        typography = markdownTypography(
+            h1 = MaterialTheme.typography.titleMedium,
+            h2 = MaterialTheme.typography.titleMedium,
+            h3 = MaterialTheme.typography.titleMedium,
+            h4 = MaterialTheme.typography.titleSmall,
+            h5 = MaterialTheme.typography.titleSmall,
+            h6 = MaterialTheme.typography.titleSmall,
+            text = body,
+            paragraph = body,
+            ordered = body,
+            bullet = body,
+            list = body
+        ),
+        modifier = modifier,
+        // A bubble's text never changes once shown, so skip the size animation.
+        animations = markdownAnimations(animateTextSize = { this })
+    )
 }
 
 @Composable
