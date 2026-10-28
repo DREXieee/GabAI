@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +45,7 @@ import com.gabai.presentation.theme.screenContentPadding
 import androidx.compose.ui.res.painterResource
 import com.gabai.R
 import com.gabai.presentation.ui.common.GabAILogoButton
+import com.gabai.presentation.ui.common.SkeletonList
 
 private val LOCATION_PERMISSIONS = arrayOf(
     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -132,10 +132,11 @@ fun NearestClinicsScreen(navController: NavController? = null) {
             Spacer(modifier = Modifier.height(Dimens.SpaceM))
 
             when {
-                isLoading && clinicsWithDistance.isEmpty() -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
+                isLoading && clinicsWithDistance.isEmpty() -> SkeletonList(
+                    loadingDescription = "Loading clinics",
+                    rowCount = 3,
+                    showLeadingBadge = false
+                )
 
                 error != null && clinicsWithDistance.isEmpty() -> Box(
                     modifier = Modifier.fillMaxSize(),

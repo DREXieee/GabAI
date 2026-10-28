@@ -111,7 +111,8 @@ private val MotionEasing = FastOutSlowInEasing
 @Composable
 fun GabAINavGraph(
     navController: NavHostController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onStartDestinationResolved: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val authStore = remember { AuthSessionStore(context) }
@@ -124,6 +125,7 @@ fun GabAINavGraph(
     LaunchedEffect(Unit) {
         val hasSession = authStore.session.first() != null
         startDestination = if (hasSession) Routes.CHATBOT else Routes.AUTH
+        onStartDestinationResolved()
     }
 
     val resolvedStartDestination = startDestination

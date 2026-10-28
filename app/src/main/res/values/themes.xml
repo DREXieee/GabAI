@@ -2,4 +2,13 @@
 <resources>
 
     <style name="Theme.GabAI" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Cold-start splash (androidx core-splashscreen, backported below Android 12).
+         The adaptive icon's foreground already keeps the logo inside the circle
+         the splash icon is cropped to. -->
+    <style name="Theme.GabAI.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.GabAI</item>
+    </style>
 </resources>

@@ -34,6 +34,7 @@ object Dimens {
     val TypingDotSize = 8.dp
     val IconBadgeLargeSize = 64.dp
     val AuthIconBadgeSize = 80.dp
+    val BreathingOrbSize = 200.dp
 }
 
 /**
