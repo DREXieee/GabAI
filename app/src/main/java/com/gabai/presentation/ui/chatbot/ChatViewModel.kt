@@ -99,7 +99,8 @@ class ChatViewModel(
                 id = (System.currentTimeMillis() + 1).toString(),
                 text = assessment.replyText,
                 isUser = false,
-                crisisLevel = assessment.crisisLevel
+                crisisLevel = assessment.crisisLevel,
+                emotion = assessment.emotion
             )
         )
         speak(assessment.replyText)

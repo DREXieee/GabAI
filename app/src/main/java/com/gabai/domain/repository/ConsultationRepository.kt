@@ -2,7 +2,8 @@ package com.gabai.domain.repository
 
 import kotlinx.coroutines.flow.Flow
 
-enum class RemoteConsultationStatus { CONFIRMED, CANCELLED, COMPLETED }
+// REQUESTED until the doctor confirms (CONFIRMED) or declines (DECLINED) it.
+enum class RemoteConsultationStatus { REQUESTED, CONFIRMED, DECLINED, CANCELLED, COMPLETED }
 
 data class AvailableSlot(
     val id: String,

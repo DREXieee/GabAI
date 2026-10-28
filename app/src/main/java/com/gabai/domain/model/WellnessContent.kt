@@ -185,4 +185,20 @@ object WellnessLibrary {
     )
 
     fun findById(id: String): WellnessItem? = items.find { it.id == id }
+
+    // What to suggest for each emotion the backend tags in a message, best fit
+    // first. Same lists as gabai-web's EMOTION_SUGGESTIONS -- keep both in step.
+    private val emotionSuggestions = mapOf(
+        Emotion.ANXIETY to listOf("box-breathing", "grounding-54321", "understanding-anxiety"),
+        Emotion.FEAR to listOf("grounding-54321", "478-breathing", "box-breathing"),
+        Emotion.SADNESS to listOf("self-compassion-break", "belly-breathing", "talking-to-someone"),
+        Emotion.DEPRESSION to listOf("talking-to-someone", "self-compassion-break", "reframe-thought")
+    )
+
+    // Suggestions for the given emotions, strongest emotion first, without repeats.
+    fun suggestionsFor(emotions: List<Emotion>, limit: Int = 3): List<WellnessItem> =
+        emotions.flatMap { emotionSuggestions[it].orEmpty() }
+            .distinct()
+            .mapNotNull(::findById)
+            .take(limit)
 }

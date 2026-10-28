@@ -62,7 +62,16 @@ data class ChatMessageResponse(
     val sessionId: String,
     val reply: String,
     val crisisLevel: String,
+    // Null when the backend answered without the AI (keyword fail-safe or fallback).
+    val emotion: String?,
     val escalationId: String?
+)
+
+data class EmotionSummaryDto(
+    val days: Int,
+    val latest: String?,
+    // Most frequent first; NONE left out.
+    val ranked: List<String>
 )
 
 data class TranscribeVoiceRequest(

@@ -5,6 +5,7 @@ import android.util.Log
 import com.gabai.domain.model.AssessmentSource
 import com.gabai.domain.model.CrisisAssessment
 import com.gabai.domain.model.CrisisLevel
+import com.gabai.domain.model.Emotion
 import com.gabai.domain.repository.ChatRepository
 import com.gabai.data.remote.models.ChatMessageRequest
 import com.gabai.data.remote.models.SynthesizeSpeechRequest
@@ -50,7 +51,8 @@ class BackendChatRepositoryImpl(private val apiService: ApiService) : ChatReposi
                 crisisLevel = level,
                 source = AssessmentSource.REMOTE_MODEL,
                 sessionId = response.sessionId,
-                escalationId = response.escalationId
+                escalationId = response.escalationId,
+                emotion = Emotion.fromWire(response.emotion)
             )
         } catch (e: CancellationException) {
             throw e
@@ -64,6 +66,9 @@ class BackendChatRepositoryImpl(private val apiService: ApiService) : ChatReposi
             )
         }
     }
+
+    override suspend fun recentEmotions(): List<Emotion> =
+        apiService.getEmotionSummary().ranked.mapNotNull(Emotion::fromWire)
 
     override suspend fun transcribeAudio(audioBytes: ByteArray, mimeType: String): String {
         val audioBase64 = Base64.encodeToString(audioBytes, Base64.NO_WRAP)

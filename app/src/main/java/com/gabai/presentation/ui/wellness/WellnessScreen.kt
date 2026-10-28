@@ -21,8 +21,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -39,11 +45,34 @@ import com.gabai.R
 import androidx.annotation.DrawableRes
 import com.gabai.presentation.ui.common.GabAILogoButton
 
+// Same tone per category everywhere a Wellness item shows: breathing green,
+// coping tips pink, articles indigo.
+@Composable
+internal fun WellnessCategory.accentColor(): Color {
+    val accents = LocalGabAIAccents.current
+    return when (this) {
+        WellnessCategory.BREATHING -> accents.green
+        WellnessCategory.COPING_TIPS -> accents.pink
+        WellnessCategory.ARTICLES -> accents.indigo
+    }
+}
+
+@DrawableRes
+internal fun WellnessCategory.iconRes(): Int = when (this) {
+    WellnessCategory.BREATHING -> R.drawable.ic_lucide_wind
+    WellnessCategory.COPING_TIPS -> R.drawable.ic_lucide_lightbulb
+    WellnessCategory.ARTICLES -> R.drawable.ic_lucide_file_text
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WellnessScreen(navController: NavController? = null) {
-    val accents = LocalGabAIAccents.current
+    val context = LocalContext.current
+    val viewModel: WellnessViewModel = viewModel(factory = WellnessViewModelFactory(context))
+    val suggested by viewModel.suggested.collectAsState()
     val grouped = WellnessLibrary.items.groupBy { it.category }
+
+    LaunchedEffect(Unit) { viewModel.refresh() }
 
     Scaffold(
         topBar = {
@@ -59,6 +88,31 @@ fun WellnessScreen(navController: NavController? = null) {
                 .screenContentPadding(paddingValues),
             verticalArrangement = Arrangement.spacedBy(Dimens.SpaceS)
         ) {
+            if (suggested.isNotEmpty()) {
+                item {
+                    Column(modifier = Modifier.padding(top = Dimens.SpaceM, bottom = Dimens.SpaceXS)) {
+                        Text(
+                            text = "Suggested for you",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Based on how you've been feeling in your recent chats.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                items(suggested) { wellnessItem ->
+                    WellnessItemCard(
+                        item = wellnessItem,
+                        accentColor = wellnessItem.category.accentColor(),
+                        icon = wellnessItem.category.iconRes(),
+                        onClick = { navController?.navigate(Routes.wellnessDetailRoute(wellnessItem.id)) }
+                    )
+                }
+            }
             WellnessCategory.entries.forEach { category ->
                 val categoryItems = grouped[category].orEmpty()
                 if (categoryItems.isNotEmpty()) {
@@ -74,16 +128,8 @@ fun WellnessScreen(navController: NavController? = null) {
                     items(categoryItems) { wellnessItem ->
                         WellnessItemCard(
                             item = wellnessItem,
-                            accentColor = when (category) {
-                                WellnessCategory.BREATHING -> accents.green
-                                WellnessCategory.COPING_TIPS -> accents.pink
-                                WellnessCategory.ARTICLES -> accents.indigo
-                            },
-                            icon = when (category) {
-                                WellnessCategory.BREATHING -> R.drawable.ic_lucide_wind
-                                WellnessCategory.COPING_TIPS -> R.drawable.ic_lucide_lightbulb
-                                WellnessCategory.ARTICLES -> R.drawable.ic_lucide_file_text
-                            },
+                            accentColor = category.accentColor(),
+                            icon = category.iconRes(),
                             onClick = { navController?.navigate(Routes.wellnessDetailRoute(wellnessItem.id)) }
                         )
                     }

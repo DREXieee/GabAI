@@ -99,7 +99,7 @@ fun ConsultationBookingScreen(navController: NavController? = null) {
     }
 
     val title = when {
-        selectedSlot != null -> "Confirm Booking"
+        selectedSlot != null -> "Send a Request"
         selectedDoctorId != null -> "Choose a Time"
         else -> "Choose a Doctor"
     }
@@ -395,6 +395,12 @@ private fun ConfirmStep(
             minLines = 3
         )
 
+        Text(
+            text = "The doctor confirms each request. You can follow it under My Consultations.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
         if (error != null) {
             Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
@@ -407,7 +413,7 @@ private fun ConfirmStep(
             if (isBooking) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
             } else {
-                Text("Confirm Booking")
+                Text("Send Request")
             }
         }
     }
