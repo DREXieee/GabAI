@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.gabai.domain.model.ChatMessage
+import com.gabai.domain.model.CrisisAssessment
 import com.gabai.domain.model.CrisisLevel
 import com.gabai.domain.repository.ChatRepository
 import kotlinx.coroutines.CancellationException
@@ -35,6 +36,10 @@ class ChatViewModel(
     private val _isTyping = MutableStateFlow(false)
     val isTyping: StateFlow<Boolean> = _isTyping.asStateFlow()
 
+    // Sends still waiting on a reply -- the repository queues them one at a
+    // time, so the first one finishing mustn't hide the indicator for the next.
+    private var awaitingReplies = 0
+
     // Null until the first message reaches the backend (unset for a purely
     // local LOCAL_KEYWORD/FALLBACK response, which never got a real session).
     private val _sessionId = MutableStateFlow<String?>(null)
@@ -63,30 +68,48 @@ class ChatViewModel(
 
         _messages.add(ChatMessage(id = System.currentTimeMillis().toString(), text = text, isUser = true))
 
-        viewModelScope.launch {
-            _isTyping.value = true
-            val assessment = chatRepository.sendMessage(text)
-            _isTyping.value = false
+        // A SEVERE keyword match is answered (and raises the banner + hotlines)
+        // right away instead of after the backend call, which can take 30-60s to
+        // wake on Render's free tier. The message is still sent below: the
+        // backend is what saves it to History and auto-escalates it to staff.
+        val localAssessment = chatRepository.localCrisisAssessment(text)
+        localAssessment?.let {
+            addReply(it)
+            raiseCrisisLevel(it.crisisLevel)
+        }
 
-            _messages.add(
-                ChatMessage(
-                    id = (System.currentTimeMillis() + 1).toString(),
-                    text = assessment.replyText,
-                    isUser = false,
-                    crisisLevel = assessment.crisisLevel
-                )
-            )
+        viewModelScope.launch {
+            if (localAssessment == null) _isTyping.value = ++awaitingReplies > 0
+            val assessment = chatRepository.sendMessage(text)
+            if (localAssessment == null) _isTyping.value = --awaitingReplies > 0
+
+            // The backend runs the same keyword check and returns this same
+            // reply, so only add one that says something the local reply didn't.
+            if (assessment.replyText != localAssessment?.replyText) addReply(assessment)
 
             assessment.sessionId?.let { _sessionId.value = it }
             assessment.escalationId?.let { _escalationId.value = it }
+            raiseCrisisLevel(assessment.crisisLevel)
+        }
+    }
 
-            // Crisis level only escalates for the rest of this session - never silently
-            // downgraded by a later, calmer message.
-            if (assessment.crisisLevel.ordinal > _crisisLevel.value.ordinal) {
-                _crisisLevel.value = assessment.crisisLevel
-            }
+    private fun addReply(assessment: CrisisAssessment) {
+        _messages.add(
+            ChatMessage(
+                id = (System.currentTimeMillis() + 1).toString(),
+                text = assessment.replyText,
+                isUser = false,
+                crisisLevel = assessment.crisisLevel
+            )
+        )
+        speak(assessment.replyText)
+    }
 
-            speak(assessment.replyText)
+    // Crisis level only escalates for the rest of this session - never silently
+    // downgraded by a later, calmer message.
+    private fun raiseCrisisLevel(level: CrisisLevel) {
+        if (level.ordinal > _crisisLevel.value.ordinal) {
+            _crisisLevel.value = level
         }
     }
 
