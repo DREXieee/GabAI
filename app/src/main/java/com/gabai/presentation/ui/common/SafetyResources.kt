@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AssistChip
@@ -25,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import com.gabai.presentation.theme.Dimens
 
 // Cross-referenced 2026-07-27 against the official In Touch site (in-touch.org),
@@ -131,6 +134,65 @@ fun SafetyResourcesCard(modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodySmall,
                 color = onContainer
             )
+        }
+    }
+}
+
+// Pinned above the chat input once a conversation is SEVERE. Kept compact so
+// the conversation stays readable: 911 and a professional are always one tap
+// away, and the full hotline list (SafetyResourcesCard) opens from "Hotlines".
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun CrisisActionBar(
+    onSpeakToProfessional: () -> Unit,
+    onShowHotlines: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val urgentColors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        // Wraps instead of clipping at large font sizes. "Call 911" takes whatever
+        // "Hotlines" leaves, so it's the biggest target. FlowRow checks whether a
+        // weighted button fits from its minimum intrinsic width, which for Text is
+        // only its longest word; IntrinsicSize.Max reports the whole label, so the
+        // row breaks before "Call 911" would have to split across two lines.
+        FlowRow(
+            modifier = Modifier.padding(Dimens.SpaceS),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXS),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXS)
+        ) {
+            Button(
+                onClick = { context.startActivity(dialIntent("911")) },
+                modifier = Modifier.weight(1f),
+                colors = urgentColors
+            ) {
+                Icon(painterResource(R.drawable.ic_lucide_phone), contentDescription = null)
+                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                Text("Call 911", fontWeight = FontWeight.SemiBold, modifier = Modifier.width(IntrinsicSize.Max))
+            }
+            // Same surface-on-red treatment as the hotline number chips.
+            Button(
+                onClick = onShowHotlines,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Text("Hotlines", fontWeight = FontWeight.SemiBold)
+            }
+            Button(
+                onClick = onSpeakToProfessional,
+                modifier = Modifier.fillMaxWidth(),
+                colors = urgentColors
+            ) {
+                Text("Speak to a Professional", textAlign = TextAlign.Center)
+            }
         }
     }
 }

@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.airbnb.lottie.LottieCompositionFactory
@@ -18,6 +21,7 @@ import com.gabai.domain.model.ChatMessage
 import com.gabai.presentation.theme.Dimens
 import com.gabai.presentation.theme.GabAITheme
 import com.gabai.presentation.ui.chatbot.ChatBubble
+import com.gabai.presentation.ui.common.CrisisActionBar
 import com.gabai.presentation.ui.common.SafetyResourcesCard
 import com.gabai.presentation.ui.common.SkeletonList
 import com.gabai.presentation.ui.wellness.BreathingGuide
@@ -54,6 +58,30 @@ class ComponentScreenshotTest(private val darkTheme: Boolean) {
     @Test
     fun safetyResourcesCard() = capture("safety_resources_card") {
         SafetyResourcesCard()
+    }
+
+    @Test
+    fun crisisActionBar() = capture("crisis_action_bar") {
+        CrisisActionBar(onSpeakToProfessional = {}, onShowHotlines = {})
+    }
+
+    // At 200% font the buttons must wrap between buttons, never inside a label.
+    @Test
+    fun crisisActionBarLargeFont() = capture("crisis_action_bar_large_font") {
+        LargeFont { CrisisActionBar(onSpeakToProfessional = {}, onShowHotlines = {}) }
+    }
+
+    // The narrowest common phone width, where 200% font forces "Hotlines" down a row.
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xhdpi")
+    fun crisisActionBarLargeFontNarrow() = capture("crisis_action_bar_large_font_360dp") {
+        LargeFont { CrisisActionBar(onSpeakToProfessional = {}, onShowHotlines = {}) }
+    }
+
+    @Composable
+    private fun LargeFont(content: @Composable () -> Unit) {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f), content = content)
     }
 
     @Test
