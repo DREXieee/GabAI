@@ -39,7 +39,10 @@ data class UserDto(
     val email: String,
     val displayName: String,
     val province: String? = null,
-    val city: String? = null
+    val city: String? = null,
+    // True until a patient answers the pre-evaluation. Null when the backend
+    // didn't send it (older backend), which the app treats as "check".
+    val needsPreEvaluation: Boolean? = null
 )
 
 data class UpdateLocationResponse(

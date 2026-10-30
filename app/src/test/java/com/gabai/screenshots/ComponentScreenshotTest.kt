@@ -25,6 +25,10 @@ import com.gabai.presentation.ui.common.CrisisActionBar
 import com.gabai.presentation.ui.common.SafetyResourcesCard
 import com.gabai.presentation.ui.common.SkeletonList
 import com.gabai.domain.model.Emotion
+import com.gabai.domain.model.PreEvaluationQuestions
+import com.gabai.domain.model.PreEvaluationResult
+import com.gabai.presentation.ui.preevaluation.PreEvaluationContent
+import com.gabai.presentation.ui.preevaluation.PreEvaluationUiState
 import com.gabai.presentation.ui.wellness.BreathingGuide
 import com.gabai.presentation.ui.wellness.WellnessSuggestionCard
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -110,6 +114,48 @@ class ComponentScreenshotTest(private val darkTheme: Boolean) {
             WellnessSuggestionCard(emotion = Emotion.DEPRESSION, onOpen = {}, onBookConsultation = {})
         }
     }
+
+    @Test
+    fun preEvaluationIntro() = capture("pre_evaluation_intro") {
+        PreEvaluationContent(state = PreEvaluationUiState(isChecking = false))
+    }
+
+    // Question 9 (self-harm) also shows the "in danger right now" note.
+    @Test
+    fun preEvaluationQuestion() = capture("pre_evaluation_question") {
+        PreEvaluationContent(state = preEvaluationAt(step = 9, answer = 1))
+    }
+
+    @Test
+    fun preEvaluationQuestionLargeFont() = capture("pre_evaluation_question_large_font") {
+        LargeFont { PreEvaluationContent(state = preEvaluationAt(step = 8, answer = 2)) }
+    }
+
+    @Test
+    fun preEvaluationResult() = capture("pre_evaluation_result") {
+        PreEvaluationContent(state = PreEvaluationUiState(isChecking = false, result = preEvaluationResult(selfHarm = false)))
+    }
+
+    @Test
+    fun preEvaluationSelfHarmResult() = capture("pre_evaluation_result_self_harm") {
+        PreEvaluationContent(state = PreEvaluationUiState(isChecking = false, result = preEvaluationResult(selfHarm = true)))
+    }
+
+    private fun preEvaluationAt(step: Int, answer: Int) = PreEvaluationUiState(
+        isChecking = false,
+        step = step,
+        answers = List(PreEvaluationQuestions.ALL.size) { if (it == step - 1) answer else null }
+    )
+
+    private fun preEvaluationResult(selfHarm: Boolean) = PreEvaluationResult(
+        phq9Score = 12,
+        phq9Severity = "MODERATE",
+        gad7Score = 7,
+        gad7Severity = "MILD",
+        selfHarm = selfHarm,
+        escalationId = if (selfHarm) "escalation-1" else null,
+        escalationSessionId = null
+    )
 
     @Test
     fun skeletonList() = capture("skeleton_list") {

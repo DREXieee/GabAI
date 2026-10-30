@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +32,7 @@ import com.gabai.presentation.ui.auth.ForgotPasswordScreen
 import com.gabai.presentation.ui.auth.LoginScreen
 import com.gabai.presentation.ui.auth.RegistrationScreen
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import com.gabai.presentation.ui.call.CallScreen
 import com.gabai.presentation.ui.chatbot.ChatbotScreen
 import com.gabai.presentation.ui.clinics.NearestClinicsScreen
@@ -41,6 +43,7 @@ import com.gabai.presentation.ui.dashboard.DashboardScreen
 import com.gabai.presentation.ui.escalation.EscalationScreen
 import com.gabai.presentation.ui.history.ChatTranscriptScreen
 import com.gabai.presentation.ui.history.HistoryScreen
+import com.gabai.presentation.ui.preevaluation.PreEvaluationScreen
 import com.gabai.presentation.ui.settings.SettingsScreen
 import com.gabai.presentation.ui.wellness.WellnessDetailScreen
 import com.gabai.presentation.ui.wellness.WellnessScreen
@@ -54,12 +57,14 @@ private const val ARG_WELLNESS_ITEM_ID = "itemId"
 private const val ARG_CONSULTATION_ID = "consultationId"
 
 // Navigation routes. The chat is the app's home: login, registration and a
-// restored session all land on CHATBOT, and the logo in its top bar opens
-// DASHBOARD (the menu) on top of it.
+// restored session all land on CHATBOT -- by way of PRE_EVALUATION until a
+// patient has answered it -- and the logo in its top bar opens DASHBOARD (the
+// menu) on top of it.
 object Routes {
     const val AUTH = "auth"
     const val LOGIN = "login"
     const val COMPLETE_PROFILE = "complete_profile"
+    const val PRE_EVALUATION = "pre_evaluation"
     const val FORGOT_PASSWORD = "forgot_password"
     const val DASHBOARD = "dashboard"
     const val CHATBOT = "chatbot"
@@ -116,6 +121,22 @@ fun GabAINavGraph(
 ) {
     val context = LocalContext.current
     val authStore = remember { AuthSessionStore(context) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Where a signed-in user goes once their profile is complete: the
+    // pre-evaluation until they've answered it, then the chat. Unknown (null)
+    // also goes to PRE_EVALUATION, which asks the backend and moves on if done.
+    suspend fun homeDestination(): String =
+        if (authStore.session.first()?.needsPreEvaluation == false) Routes.CHATBOT else Routes.PRE_EVALUATION
+
+    fun goAfterSignIn(needsLocation: Boolean) {
+        coroutineScope.launch {
+            val destination = if (needsLocation) Routes.COMPLETE_PROFILE else homeDestination()
+            navController.navigate(destination) {
+                popUpTo(navController.graph.startDestinationId) { inclusive = true }
+            }
+        }
+    }
 
     // NavHost needs a startDestination up front, so resolve it from the stored
     // session before composing the graph at all -- without this, every cold
@@ -124,7 +145,7 @@ fun GabAINavGraph(
     var startDestination by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         val hasSession = authStore.session.first() != null
-        startDestination = if (hasSession) Routes.CHATBOT else Routes.AUTH
+        startDestination = if (hasSession) homeDestination() else Routes.AUTH
         onStartDestinationResolved()
     }
 
@@ -146,7 +167,7 @@ fun GabAINavGraph(
     // duplicated at each call site (including the manual "Log out" button,
     // which now only needs to clear the session, not navigate itself).
     LaunchedEffect(navController) {
-        var hasSeenSession = resolvedStartDestination == Routes.CHATBOT
+        var hasSeenSession = resolvedStartDestination != Routes.AUTH
         authStore.session.collect { session ->
             if (session != null) {
                 hasSeenSession = true
@@ -183,12 +204,7 @@ fun GabAINavGraph(
         // Auth screen (Registration)
         composable(Routes.AUTH) {
             RegistrationScreen(
-                onRegistrationComplete = { needsLocation ->
-                    val destination = if (needsLocation) Routes.COMPLETE_PROFILE else Routes.CHATBOT
-                    navController.navigate(destination) {
-                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
-                    }
-                },
+                onRegistrationComplete = { needsLocation -> goAfterSignIn(needsLocation) },
                 onNavigateToLogin = { navController.navigate(Routes.LOGIN) }
             )
         }
@@ -196,12 +212,7 @@ fun GabAINavGraph(
         // Login screen
         composable(Routes.LOGIN) {
             LoginScreen(
-                onLoginComplete = { needsLocation ->
-                    val destination = if (needsLocation) Routes.COMPLETE_PROFILE else Routes.CHATBOT
-                    navController.navigate(destination) {
-                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
-                    }
-                },
+                onLoginComplete = { needsLocation -> goAfterSignIn(needsLocation) },
                 onNavigateToRegister = { navController.popBackStack() },
                 onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) }
             )
@@ -210,12 +221,13 @@ fun GabAINavGraph(
         // Post-Google-signup profile completion (province/city)
         composable(Routes.COMPLETE_PROFILE) {
             CompleteProfileScreen(
-                onLocationSaved = {
-                    navController.navigate(Routes.CHATBOT) {
-                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
-                    }
-                }
+                onLocationSaved = { goAfterSignIn(needsLocation = false) }
             )
+        }
+
+        // PHQ-9 + GAD-7 pre-evaluation, required once before the chat
+        composable(Routes.PRE_EVALUATION) {
+            PreEvaluationScreen(navController = navController)
         }
 
         // Forgot password screen
