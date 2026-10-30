@@ -19,8 +19,11 @@ import com.gabai.data.remote.models.GoogleSignInRequest
 import com.gabai.data.remote.models.HistoryResponseDto
 import com.gabai.data.remote.models.LoginRequest
 import com.gabai.data.remote.models.OpenSlotsResponse
+import com.gabai.data.remote.models.PreEvaluationResponse
 import com.gabai.data.remote.models.RefreshRequest
 import com.gabai.data.remote.models.RegisterRequest
+import com.gabai.data.remote.models.SubmitPreEvaluationRequest
+import com.gabai.data.remote.models.SubmitPreEvaluationResponse
 import com.gabai.data.remote.models.SynthesizeSpeechRequest
 import com.gabai.data.remote.models.TranscribeVoiceRequest
 import com.gabai.data.remote.models.TranscribeVoiceResponse
@@ -53,6 +56,12 @@ interface ApiService {
 
     @PATCH("api/auth/location")
     suspend fun updateLocation(@Body request: UpdateLocationRequest): UpdateLocationResponse
+
+    @GET("api/pre-evaluation")
+    suspend fun getPreEvaluation(): PreEvaluationResponse
+
+    @POST("api/pre-evaluation")
+    suspend fun submitPreEvaluation(@Body request: SubmitPreEvaluationRequest): SubmitPreEvaluationResponse
 
     @POST("api/chat/message")
     suspend fun sendChatMessage(@Body request: ChatMessageRequest): ChatMessageResponse

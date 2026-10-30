@@ -1,6 +1,7 @@
 package com.gabai.data.local.repository
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -18,13 +19,17 @@ private val KEY_EXPIRES_AT = longPreferencesKey("expires_at")
 private val KEY_USER_ID = stringPreferencesKey("user_id")
 private val KEY_EMAIL = stringPreferencesKey("email")
 private val KEY_DISPLAY_NAME = stringPreferencesKey("display_name")
+private val KEY_NEEDS_PRE_EVALUATION = booleanPreferencesKey("needs_pre_evaluation")
 
 data class StoredSession(
     val accessToken: String,
     val refreshToken: String,
     val userId: String,
     val email: String,
-    val displayName: String
+    val displayName: String,
+    // Null when unknown (a session saved before the pre-evaluation existed):
+    // PreEvaluationScreen then asks the backend.
+    val needsPreEvaluation: Boolean?
 )
 
 class AuthSessionStore(private val context: Context) {
@@ -37,7 +42,17 @@ class AuthSessionStore(private val context: Context) {
             prefs[KEY_USER_ID] = auth.user.id
             prefs[KEY_EMAIL] = auth.user.email
             prefs[KEY_DISPLAY_NAME] = auth.user.displayName
+            val needsPreEvaluation = auth.user.needsPreEvaluation
+            if (needsPreEvaluation != null) {
+                prefs[KEY_NEEDS_PRE_EVALUATION] = needsPreEvaluation
+            } else {
+                prefs.remove(KEY_NEEDS_PRE_EVALUATION)
+            }
         }
+    }
+
+    suspend fun markPreEvaluationDone() {
+        context.authDataStore.edit { it[KEY_NEEDS_PRE_EVALUATION] = false }
     }
 
     suspend fun clearSession() {
@@ -52,7 +67,8 @@ class AuthSessionStore(private val context: Context) {
             refreshToken = refreshToken,
             userId = prefs[KEY_USER_ID].orEmpty(),
             email = prefs[KEY_EMAIL].orEmpty(),
-            displayName = prefs[KEY_DISPLAY_NAME].orEmpty()
+            displayName = prefs[KEY_DISPLAY_NAME].orEmpty(),
+            needsPreEvaluation = prefs[KEY_NEEDS_PRE_EVALUATION]
         )
     }
 
