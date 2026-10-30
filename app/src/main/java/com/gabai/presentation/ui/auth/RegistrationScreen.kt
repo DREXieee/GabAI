@@ -120,7 +120,7 @@ fun RegistrationScreen(
                 )
 
                 Text(
-                    text = "Support for everyday stress and disaster recovery, including typhoons — " +
+                    text = "Support for whatever you're going through — " +
                         "fill in the information below to get started",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
